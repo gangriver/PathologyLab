@@ -1,0 +1,42 @@
+{
+  "name": "lab-website",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build --turbopack",
+    "start": "next start",
+    "lint": "eslint",
+    "setup": "tsx scripts/setup.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/security.test.ts tests/pdf.test.ts tests/migration.test.ts",
+    "test:http": "tsx tests/http-check.ts"
+  },
+  "dependencies": {
+    "next": "15.5.25",
+    "openai": "^7.13.0",
+    "pdfjs-dist": "^6.3.289",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "zod": "^4.6.1",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^24.13.4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.25",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.13",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=24.13.0"
+  },
+  "overrides": {
+    "postcss": "8.5.28"
+  }
+}
