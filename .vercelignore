@@ -1,0 +1,10 @@
+.env*
+.git
+.vercel
+.next
+.next-dev
+node_modules
+data
+work
+*.sqlite*
+*.tsbuildinfo
