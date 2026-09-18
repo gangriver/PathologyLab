@@ -11,6 +11,7 @@ test("공개 PDF 첨부와 AI 요약의 저장·오류 처리", async (t) => {
   const testDirectory = mkdtempSync(resolve(testRoot, "pdf-"));
   process.env.DATABASE_PATH = resolve(testDirectory, "test.sqlite");
   process.env.APP_URL = "http://lab.test";
+  process.env.CLOUD_STORAGE = "0";
   delete process.env.OPENAI_API_KEY;
   const { db } = await import("../lib/db");
   const { setupDatabase } = await import("../lib/setup-database");
@@ -193,7 +194,7 @@ test("공개 PDF 첨부와 AI 요약의 저장·오류 처리", async (t) => {
       const response = await imports.POST(upload());
       assert.equal(response.status, 201);
       id = (await response.json() as { id: string }).id;
-      document = getDocumentInfo(id)!;
+      document = (await getDocumentInfo(id))!;
       assert.equal(document.filename, "검증 논문.pdf");
       assert.equal(document.pageCount, 2);
       assert.ok(!("content" in document));
@@ -203,12 +204,12 @@ test("공개 PDF 첨부와 AI 요약의 저장·오류 처리", async (t) => {
       assert.equal(download.headers.get("cache-control"), "private, no-store");
       assert.match(download.headers.get("content-disposition")!, /^attachment;/);
       assert.deepEqual(new Uint8Array(await download.arrayBuffer()), fixture);
-      assert.match(getDocument(id)!.pagesJson, /80 percent/);
+      assert.match((await getDocument(id))!.pagesJson, /80 percent/);
     });
     await t.test("충돌하는 수정과 손상 파일 교체가 기존 PDF를 훼손하지 않음", async () => {
       assert.equal((await pdfRoute.POST(upload(fixture, 99), context())).status, 409);
       assert.equal((await pdfRoute.POST(upload(new TextEncoder().encode("%PDF-1.4\nbroken"), 1), context())).status, 422);
-      assert.equal(getDocumentInfo(id)!.id, document.id);
+      assert.equal((await getDocumentInfo(id))!.id, document.id);
       assert.equal(db.prepare("SELECT revision FROM papers WHERE id=?").get(id)?.revision, 1);
     });
     await t.test("긴 이모지 파일명도 교체와 다운로드 가능", async () => {
@@ -290,20 +291,20 @@ test("공개 PDF 첨부와 AI 요약의 저장·오류 처리", async (t) => {
         return aiResponse();
       });
       assert.equal((await summaryRoute.POST(request("POST", { documentId: originalId }), context())).status, 409);
-      document = getDocumentInfo(id)!;
+      document = (await getDocumentInfo(id))!;
     });
     await t.test("본문이 없는 PDF는 첨부되지만 AI 요약을 요청할 수 없음", async () => {
       assert.equal((await pdfRoute.POST(upload(makePdf([""]), 2), context())).status, 200);
-      document = getDocumentInfo(id)!;
+      document = (await getDocumentInfo(id))!;
       assert.equal((await summaryRoute.POST(request("POST", { documentId: document.id }), context())).status, 422);
     });
     await t.test("첨부 삭제는 버전을 확인하고 논문 삭제 시 원본도 함께 삭제", async () => {
       assert.equal((await pdfRoute.DELETE(request("DELETE", { revision: 2 }), context())).status, 409);
       assert.equal((await pdfRoute.DELETE(request("DELETE", { revision: 3 }), context())).status, 200);
-      assert.equal(getDocumentInfo(id), undefined);
+      assert.equal(await getDocumentInfo(id), undefined);
       assert.equal((await pdfRoute.POST(upload(fixture, 4), context())).status, 200);
       assert.equal((await paperRoute.DELETE(request("DELETE", { revision: 5 }), context())).status, 200);
-      assert.equal(getDocumentInfo(id), undefined);
+      assert.equal(await getDocumentInfo(id), undefined);
       assert.equal((await pdfRoute.GET(request("GET"), context())).status, 404);
     });
   } finally {

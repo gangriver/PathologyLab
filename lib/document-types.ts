@@ -5,6 +5,7 @@ export const PDF_LIMITS = {
   parseTimeoutMs: 15000,
   maxConcurrentParsers: 2,
   uploadTimeoutMs: 30000,
+  cloudFinalizeTimeoutMs: 250000,
   summaryTimeoutMs: 90000,
   summaryClientTimeoutMs: 105000,
 } as const;

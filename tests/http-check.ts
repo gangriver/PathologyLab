@@ -27,6 +27,7 @@ async function main() {
   const base = "http://127.0.0.1:" + port;
   process.env.DATABASE_PATH = resolve(directory, "test.sqlite");
   process.env.APP_URL = base;
+  process.env.CLOUD_STORAGE = "0";
   process.env.OPENAI_API_KEY = "";
   const { db } = await import("../lib/db");
   const { setupDatabase } = await import("../lib/setup-database");

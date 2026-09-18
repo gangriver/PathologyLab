@@ -24,7 +24,7 @@ export async function apiResponse(operation: () => Promise<unknown>, status = 20
   try { return NextResponse.json(await operation(), { status, headers: { "Cache-Control": "no-store" } }); }
   catch (error) {
     if (error instanceof ApiError) return NextResponse.json({ error: error.message }, { status: error.status });
-    console.error("요청 처리 실패:", error instanceof Error ? error.message : "알 수 없는 오류");
+    console.error("요청 처리 중 오류가 발생했습니다.");
     return NextResponse.json({ error: "요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요." }, { status: 500 });
   }
 }

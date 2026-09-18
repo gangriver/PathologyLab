@@ -6,10 +6,11 @@ import type { Paper } from "@/lib/types";
 import type { PaperInput } from "@/lib/validation";
 import { PDF_LIMITS, type PaperBasicInfo, type PaperDocumentInfo, type PaperSummary } from "@/lib/document-types";
 import { paperSections } from "@/lib/paper-sections";
+import { uploadPdf } from "@/lib/upload-pdf";
 
-export function usePaperForm(defaultPresenter: string, paper?: Paper, initialDocument?: PaperDocumentInfo, onPendingChange?: (pending: boolean) => void) {
+export function usePaperForm(defaultPresenter: string, cloudStorage: boolean, paper?: Paper, initialDocument?: PaperDocumentInfo, onPendingChange?: (pending: boolean) => void) {
   const router = useRouter();
-  const { pending: requesting, error, send } = useApiRequest();
+  const { pending: requesting, error, send, sendRequest } = useApiRequest();
   const [navigating, startTransition] = useTransition();
   const pending = requesting || navigating;
   useEffect(() => { onPendingChange?.(pending); }, [pending, onPendingChange]);
@@ -37,7 +38,7 @@ export function usePaperForm(defaultPresenter: string, paper?: Paper, initialDoc
     if (!file || !paper) return;
     setOperation("PDF를 읽는 중…"); setNotice("");
     const form = new FormData(); form.set("file", file); form.set("revision", String(revision));
-    const result = await send<{ document: PaperDocumentInfo; revision: number; basicInfo: PaperBasicInfo }>("/api/papers/" + paper.id + "/pdf", "POST", form, PDF_LIMITS.uploadTimeoutMs);
+    const result = await sendRequest<{ document: PaperDocumentInfo; revision: number; basicInfo: PaperBasicInfo }>(() => uploadPdf("/api/papers/" + paper.id + "/pdf", form, cloudStorage));
     if (result) {
       setAttachment(result.document); setRevision(result.revision); setDraft(null);
       setValues(current => ({

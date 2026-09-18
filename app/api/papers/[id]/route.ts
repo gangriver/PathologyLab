@@ -4,7 +4,7 @@ import { updatePaperSchema, deletePaperSchema } from "@/lib/validation";
 export const runtime = "nodejs";
 type Context = { params: Promise<{ id: string }> };
 export async function GET(request: Request, context: Context) {
-  return apiResponse(async () => { const { id } = await context.params; const paper = findPaper(id); if (!paper) throw new ApiError(404, "논문을 찾을 수 없습니다."); return { paper, comments: listComments(id) }; });
+  return apiResponse(async () => { const { id } = await context.params; const paper = await findPaper(id); if (!paper) throw new ApiError(404, "논문을 찾을 수 없습니다."); return { paper, comments: await listComments(id) }; });
 }
 export async function PATCH(request: Request, context: Context) {
   return apiResponse(async () => { const input = await readMutation(request, updatePaperSchema); return editPaper((await context.params).id, input, input.revision); });

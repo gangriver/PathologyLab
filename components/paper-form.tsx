@@ -6,8 +6,8 @@ import { paperSections } from "@/lib/paper-sections";
 import { PDF_LIMITS, type PaperDocumentInfo } from "@/lib/document-types";
 import { SummaryDraft } from "./summary-draft";
 
-export function PaperForm({ paper, defaultPresenter, document, summaryConfigured = false, onPendingChange }: { paper?: Paper; defaultPresenter: string; document?: PaperDocumentInfo; summaryConfigured?: boolean; onPendingChange?: (pending: boolean) => void }) {
-  const { values, setField, pending, error, notice, operation, submit, attachment, draft, upload, removeDocument, summarize, applyDraft } = usePaperForm(defaultPresenter, paper, document, onPendingChange);
+export function PaperForm({ paper, defaultPresenter, cloudStorage, document, summaryConfigured = false, onPendingChange }: { paper?: Paper; defaultPresenter: string; cloudStorage: boolean; document?: PaperDocumentInfo; summaryConfigured?: boolean; onPendingChange?: (pending: boolean) => void }) {
+  const { values, setField, pending, error, notice, operation, submit, attachment, draft, upload, removeDocument, summarize, applyDraft } = usePaperForm(defaultPresenter, cloudStorage, paper, document, onPendingChange);
   return <form className="panel" onSubmit={submit}>
     {paper && <section className="document-panel">
       <h2>원문 PDF와 기본 정보</h2>

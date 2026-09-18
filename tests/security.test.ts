@@ -10,6 +10,7 @@ test("로그인 없는 논문·토론 저장과 변경 요청 검증", async (t)
   const testDirectory = mkdtempSync(resolve(testRoot, "security-"));
   process.env.DATABASE_PATH = resolve(testDirectory, "test.sqlite");
   process.env.APP_URL = "http://lab.test";
+  process.env.CLOUD_STORAGE = "0";
   const { db } = await import("../lib/db");
   const { setupDatabase } = await import("../lib/setup-database");
   await setupDatabase(db);

@@ -2,8 +2,8 @@
 import { usePdfImport } from "@/hooks/use-pdf-import";
 import { PDF_LIMITS } from "@/lib/document-types";
 
-export function PdfImport({ onPendingChange }: { onPendingChange?: (pending: boolean) => void }) {
-  const { pending, error, submit } = usePdfImport(onPendingChange);
+export function PdfImport({ cloudStorage, onPendingChange }: { cloudStorage: boolean; onPendingChange?: (pending: boolean) => void }) {
+  const { pending, error, submit } = usePdfImport(cloudStorage, onPendingChange);
   return <section className="panel document-panel">
     <h2>PDF로 시작하기</h2>
     <p className="form-note">PDF에서 제목·저자·DOI 링크를 찾아 새 논문에 자동 입력합니다. API 키 없이 사용할 수 있으며, 다음 화면에서 내용을 확인하고 수정해주세요.</p>
