@@ -14,5 +14,5 @@ export async function POST(request: Request) {
     } finally {
       if ("cleanup" in upload) await upload.cleanup().catch(() => console.warn("임시 PDF 정리를 완료하지 못했습니다."));
     }
-  }, 201);
+  }, 201, request);
 }

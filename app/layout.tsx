@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
-import { lab } from "@/lib/lab";
+import { getLab } from "@/lib/lab";
+import { getLocale } from "@/lib/locale-server";
+import { shellCopy } from "@/lib/i18n";
+import { LocaleProvider } from "@/components/locale-provider";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: { default: lab.name, template: "%s | " + lab.name },
-  description: "인공지능, 의생명과학, 병리학을 함께 공부하는 연구실의 멤버 소개와 누구나 함께 기록하는 논문 아카이브입니다.",
-};
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ko"><body><a className="skip-link" href="#main">본문으로 이동</a>{children}</body></html>;
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const lab = getLab(locale);
+  return { title: { default: lab.name, template: "%s | " + lab.name }, description: shellCopy[locale].description };
+}
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await getLocale();
+  return <html lang={locale}><body><LocaleProvider locale={locale}><a className="skip-link" href="#main">{shellCopy[locale].skip}</a>{children}</LocaleProvider></body></html>;
 }

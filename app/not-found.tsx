@@ -1,4 +1,8 @@
 import Link from "next/link";
-export default function NotFound() {
-  return <main id="main" className="shell page-shell"><div className="empty-state"><h1>페이지를 찾을 수 없습니다.</h1><p>주소를 확인하거나 홈으로 돌아가주세요.</p><Link href="/" className="button">홈으로 돌아가기</Link></div></main>;
+import { getLocale } from "@/lib/locale-server";
+import { getSiteCopy } from "@/lib/i18n-site";
+
+export default async function NotFound() {
+  const copy = getSiteCopy(await getLocale());
+  return <main id="main" className="shell page-shell"><div className="empty-state"><h1>{copy.notFound.heading}</h1><p>{copy.notFound.description}</p><Link href="/" className="button">{copy.notFound.backHome}</Link></div></main>;
 }

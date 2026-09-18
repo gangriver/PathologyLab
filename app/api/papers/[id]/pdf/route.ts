@@ -30,7 +30,7 @@ export async function GET(request: Request, context: Context) {
       "Content-Security-Policy": "sandbox",
     } });
     return null;
-  });
+  }, 200, request);
   return download ?? error;
 }
 export async function POST(request: Request, context: Context) {
@@ -45,11 +45,11 @@ export async function POST(request: Request, context: Context) {
     } finally {
       if ("cleanup" in upload) await upload.cleanup().catch(() => console.warn("임시 PDF 정리를 완료하지 못했습니다."));
     }
-  });
+  }, 200, request);
 }
 export async function DELETE(request: Request, context: Context) {
   return apiResponse(async () => {
     const input = await readMutation(request, deletePaperSchema);
     return deleteDocument((await context.params).id, input.revision);
-  });
+  }, 200, request);
 }

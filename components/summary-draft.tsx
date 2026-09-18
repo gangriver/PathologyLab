@@ -1,14 +1,18 @@
 "use client";
 import type { PaperSummary } from "@/lib/document-types";
-import { paperSections } from "@/lib/paper-sections";
+import { getPaperSections } from "@/lib/paper-sections";
+import { useLocale } from "@/hooks/use-locale";
+import { getFormMessages } from "@/lib/i18n-form";
 
 export function SummaryDraft({ draft, apply, disabled }: { draft: PaperSummary; apply: () => void; disabled: boolean }) {
-  return <section className="summary-draft" aria-label="AI 요약 초안">
-    <span className="badge">검토 전 AI 초안</span>
-    <h3>{draft.title || "제목 확인 필요"}</h3>
-    <p className="muted">{draft.authors || "저자 확인 필요"}</p>
-    {paperSections.map(({ key, label }) => <section className="note-section" key={key}><h4>{label}</h4><p className="note-text">{draft[key].text}</p><p className="evidence">{draft[key].pages.length ? "근거: PDF " + draft[key].pages.join(", ") + "쪽" : "본문 근거 확인 필요"}</p></section>)}
-    <p className="form-note">적용하면 제목·저자와 네 가지 정리 항목을 바꿉니다. AI는 틀릴 수 있으므로 원문을 확인하고, 아래 저장 버튼으로 확정해주세요.</p>
-    <button type="button" className="button" onClick={apply} disabled={disabled}>입력란에 적용</button>
+  const { locale } = useLocale();
+  const text = getFormMessages(locale);
+  return <section className="summary-draft" aria-label={text.draftLabel}>
+    <span className="badge">{text.draftBadge}</span>
+    <h3>{draft.title || text.checkTitle}</h3>
+    <p className="muted">{draft.authors || text.checkAuthors}</p>
+    {getPaperSections(locale).map(({ key, label }) => <section className="note-section" key={key}><h4>{label}</h4><p className="note-text">{draft[key].text}</p><p className="evidence">{draft[key].pages.length ? text.evidence(draft[key].pages) : text.missingEvidence}</p></section>)}
+    <p className="form-note">{text.draftHelp}</p>
+    <button type="button" className="button" onClick={apply} disabled={disabled}>{text.applyDraft}</button>
   </section>;
 }

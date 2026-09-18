@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { localeFromCookie } from "./i18n";
+import { translateError } from "./i18n-errors";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -20,11 +22,12 @@ export async function readMutation<T>(request: Request, schema: z.ZodType<T>): P
   if (!result.success) throw new ApiError(422, result.error.issues[0]?.message ?? "입력 내용을 확인해주세요.");
   return result.data;
 }
-export async function apiResponse(operation: () => Promise<unknown>, status = 200) {
+export async function apiResponse(operation: () => Promise<unknown>, status = 200, request?: Request) {
   try { return NextResponse.json(await operation(), { status, headers: { "Cache-Control": "no-store" } }); }
   catch (error) {
-    if (error instanceof ApiError) return NextResponse.json({ error: error.message }, { status: error.status });
+    const locale = localeFromCookie(request?.headers.get("cookie") ?? null);
+    if (error instanceof ApiError) return NextResponse.json({ error: translateError(error.message, locale) }, { status: error.status });
     console.error("요청 처리 중 오류가 발생했습니다.");
-    return NextResponse.json({ error: "요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요." }, { status: 500 });
+    return NextResponse.json({ error: translateError("요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.", locale) }, { status: 500 });
   }
 }

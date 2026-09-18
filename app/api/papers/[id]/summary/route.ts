@@ -13,5 +13,5 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const summary = await generateSummary(document, request.signal);
     if ((await getDocumentInfo(id))?.id !== document.id) throw new ApiError(409, "요약 중 PDF가 변경되었습니다. 새 파일로 다시 생성해주세요.");
     return summary;
-  });
+  }, 200, request);
 }

@@ -1,4 +1,8 @@
+import type { Locale } from "./i18n";
+
 export const paperStatuses = { planned: "발표 예정", discussed: "토론 완료" } as const;
+const englishPaperStatuses = { planned: "Planned", discussed: "Discussed" } as const;
+export function getPaperStatuses(locale: Locale) { return locale === "en" ? englishPaperStatuses : paperStatuses; }
 export type PaperStatus = keyof typeof paperStatuses;
 export type Paper = {
   id: string; title: string; authors: string; url: string; researchQuestion: string;

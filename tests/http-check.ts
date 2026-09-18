@@ -36,7 +36,7 @@ async function main() {
   let logs = "";
   child.stdout.on("data", chunk => { logs += String(chunk); });
   child.stderr.on("data", chunk => { logs += String(chunk); });
-  const get = (path: string) => fetch(base + path, { signal: AbortSignal.timeout(15000) });
+  const get = (path: string, locale?: string) => fetch(base + path, { headers: locale ? { cookie: "lab-locale=" + locale } : undefined, signal: AbortSignal.timeout(15000) });
   const mutate = (path: string, method: string, body: unknown) => fetch(base + path, {
     method, headers: { origin: base, "content-type": "application/json" },
     body: JSON.stringify(body), signal: AbortSignal.timeout(15000),
@@ -49,7 +49,22 @@ async function main() {
     }
     assert.ok(ready, "프로덕션 서버 시작 실패: " + logs);
     const homeHtml = await (await get("/")).text();
+    assert.match(homeHtml, /<html lang="ko"/);
     assert.doesNotMatch(homeHtml, /href="\/(login|signup)"|멤버 로그인/);
+    const englishHome = await (await get("/", "en")).text();
+    assert.match(englishHome, /<html lang="en"/);
+    assert.match(englishHome, /Noh myung Giun/);
+    assert.match(englishHome, /Yi Hae Chan/);
+    for (const locale of ["ko", "invalid"]) assert.match(await (await get("/", locale)).text(), /<html lang="ko"/);
+    const notFound = await get("/missing-language-check", "en");
+    assert.equal(notFound.status, 404);
+    assert.match(await notFound.text(), /<html lang="en"/);
+    const invalidOrigin = await fetch(base + "/api/papers", {
+      method: "POST", headers: { cookie: "lab-locale=en", origin: "https://outside.invalid", "content-type": "application/json" }, body: "{}",
+    });
+    assert.equal(invalidOrigin.status, 403);
+    const originError = await invalidOrigin.json() as { error: string };
+    assert.doesNotMatch(originError.error, /[가-힣]/);
     for (const path of ["/login", "/signup", "/pending", "/members"]) {
       const response = await fetch(base + path, { redirect: "manual", signal: AbortSignal.timeout(15000) });
       assert.ok([307, 308].includes(response.status), "옛 회원 화면 이동 실패: " + path);
@@ -105,7 +120,22 @@ async function main() {
       const html = await page.text();
       assert.ok(html.includes(expected) && !html.includes('$RX("B:0"'), "저장 후 화면 재조회 실패: " + path + logs);
       assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
+      const englishPage = await get(path, "en");
+      assert.equal(englishPage.status, 200);
+      const englishHtml = await englishPage.text();
+      assert.match(englishHtml, /<html lang="en"/);
+      assert.match(englishHtml, /Presenter/);
+      assert.ok(englishHtml.includes(expected), "언어 전환 중 원문 변경: " + path);
+      assert.doesNotMatch(englishHtml, /<script>alert\(1\)<\/script>/);
     }
+    const englishNew = await (await get("/papers/new", "en")).text();
+    assert.match(englishNew, /<html lang="en"/);
+    assert.match(englishNew, /Presenter/);
+    const invalidEnglishPaper = await fetch(base + "/api/papers", {
+      method: "POST", headers: { cookie: "lab-locale=en", origin: base, "content-type": "application/json" }, body: JSON.stringify({ ...paper, title: "" }),
+    });
+    assert.equal(invalidEnglishPaper.status, 422);
+    assert.doesNotMatch((await invalidEnglishPaper.json() as { error: string }).error, /[가-힣]/);
     const list = await get("/api/papers");
     assert.equal(list.status, 200);
     assert.equal((await list.json() as { id: string }[])[0].id, id);
@@ -117,7 +147,7 @@ async function main() {
     assert.equal((await get("/api/papers/" + id)).status, 404);
     assert.equal((await get("/api/papers/" + id + "/pdf")).status, 404);
     assert.equal(db.prepare("SELECT count(*) AS count FROM comments WHERE paperId=?").get(id)?.count, 0);
-    console.log("프로덕션 HTTP 검증 통과: PDF 최대 용량 업로드·다운로드, 용량 안내, 인증 API 제거, 기존 로그인 주소 이동, PDF 기본정보 자동 입력, 쿠키 없는 등록·편집·토론·삭제, 저장 후 재조회");
+    console.log("프로덕션 HTTP 검증 통과: 한영 화면·영문 이름·언어별 오류·원문 보존·언어 쿠키 격리, PDF 최대 용량 업로드·다운로드, PDF 기본정보 자동 입력, 공개 등록·편집·토론·삭제");
   } finally {
     if (child.exitCode === null) { child.kill(); await once(child, "exit"); }
     db.close();

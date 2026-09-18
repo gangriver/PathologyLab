@@ -1,7 +1,10 @@
 "use client";
 import { useState, useRef } from "react";
+import { translateError } from "@/lib/i18n-errors";
+import { useLocale } from "./use-locale";
 
 export function useApiRequest() {
+  const { locale } = useLocale();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const busy = useRef(false);
@@ -25,5 +28,5 @@ export function useApiRequest() {
       return fetch(url, { method, headers: multipart ? undefined : { "Content-Type": "application/json" }, body: multipart ? body : JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs) });
     });
   }
-  return { pending, error, send, sendRequest };
+  return { pending, error: translateError(error, locale), send, sendRequest };
 }

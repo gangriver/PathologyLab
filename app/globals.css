@@ -14,6 +14,10 @@ button:disabled { cursor:wait; opacity:.6; }
 .shell { width:min(1180px,calc(100% - 80px)); margin-inline:auto; }
 .site-header { background:rgba(248,249,252,.96); border-bottom:1px solid var(--line); }
 .header-inner { display:flex; justify-content:space-between; align-items:center; min-height:96px; gap:24px; }
+.header-controls { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:16px; }
+.language-switch { display:inline-flex; flex-shrink:0; border:1px solid var(--line); border-radius:7px; padding:3px; gap:2px; }
+.language-switch button { background:transparent; border:0; border-radius:4px; padding:6px 9px; color:var(--muted); font-size:12px; white-space:nowrap; }
+.language-switch button[aria-pressed="true"] { background:#e9effe; color:#1747a9; font-weight:700; }
 .brand { display:flex; align-items:center; gap:13px; font-size:20px; font-weight:800; letter-spacing:-.04em; }
 .brand small { display:block; font-size:12px; color:var(--muted); letter-spacing:.01em; font-weight:400; }
 .brand-mark { width:43px; height:43px; display:grid; place-items:center; background:var(--foreground); color:white; border-radius:12px 12px 12px 2px; font-size:30px; line-height:1; }
@@ -148,6 +152,8 @@ details summary { cursor:pointer; font-size:14px; }
 .paper-fields { border:0; padding:0; margin:0; min-width:0; }
 @media(max-width:900px) {
 .shell { width:calc(100% - 40px); }
+.header-inner { flex-wrap:wrap; padding-block:15px; }
+.header-controls { gap:12px; }
 .hero-heading { align-items:flex-start; }
 .hero-heading>p { font-size:14px; }
 .member-card { padding:20px; }
@@ -162,9 +168,11 @@ details summary { cursor:pointer; font-size:14px; }
 .brand { font-size:17px; }
 .brand small { display:none; }
 .brand-mark { width:34px; height:34px; font-size:24px; }
+.header-controls { width:100%; justify-content:space-between; gap:10px; }
 nav { gap:15px; font-size:13px; }
 nav>a:first-child { display:none; }
 nav .button { font-size:12px; padding:8px 10px; gap:5px; }
+nav { flex-wrap:wrap; gap:10px; }
 .members-section { padding:35px 0 40px; }
 .hero-heading { display:block; margin-bottom:30px; }
 .hero-heading>p { margin-top:22px; }
