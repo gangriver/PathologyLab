@@ -58,7 +58,7 @@ test("새 데이터베이스는 인증 테이블 없이 공개 자료를 저장�
     database.prepare("INSERT INTO papers (id,title,createdAt,updatedAt) VALUES (?,?,?,?)").run("public-paper", "공개 논문", "now", "now");
     database.prepare("INSERT INTO comments (id,paperId,content,createdAt) VALUES (?,?,?,?)").run("public-comment", "public-paper", "공개 토론", "now");
     setupDatabase(database);
-    assert.deepEqual({ ...database.prepare("SELECT createdBy,creatorName FROM papers").get() }, { createdBy: "", creatorName: "방문자" });
+    assert.deepEqual({ ...database.prepare("SELECT subtitle,createdBy,creatorName FROM papers").get() }, { subtitle: "", createdBy: "", creatorName: "방문자" });
     assert.deepEqual({ ...database.prepare("SELECT authorId,authorName FROM comments").get() }, { authorId: "", authorName: "방문자" });
     assert.deepEqual(database.prepare("PRAGMA foreign_key_check").all(), []);
   } finally { database.close(); }
@@ -76,7 +76,7 @@ test("기존 작성자 이름, 모든 논문 값, 토론과 원본 PDF를 보존
     setupDatabase(database);
     setupDatabase(database);
     assert.equal(needsPublicMigration(database), false);
-    assert.deepEqual({ ...database.prepare("SELECT * FROM papers").get() }, { ...originalPaper, creatorName: "기존 작성자" });
+    assert.deepEqual({ ...database.prepare("SELECT * FROM papers").get() }, { ...originalPaper, subtitle: "", creatorName: "기존 작성자" });
     assert.deepEqual({ ...database.prepare("SELECT * FROM comments").get() }, { ...originalComment, authorName: "기존 작성자" });
     assert.deepEqual({ ...database.prepare("SELECT * FROM paper_documents").get() }, originalDocument);
     assert.deepEqual({ ...database.prepare("SELECT * FROM user").get() }, originalUser);
@@ -92,6 +92,28 @@ test("기존 작성자 이름, 모든 논문 값, 토론과 원본 PDF를 보존
     database.prepare("DELETE FROM papers WHERE id=?").run("paper-1");
     assert.equal(database.prepare("SELECT count(*) AS count FROM comments").get()?.count, 0);
     assert.equal(database.prepare("SELECT count(*) AS count FROM paper_documents").get()?.count, 0);
+  } finally { database.close(); }
+});
+
+test("부제목이 없는 공개 데이터베이스에 열을 추가하고 재초기화해도 기존 논문·토론·PDF와 부제목을 보존한다", () => {
+  const database = createLegacyDatabase();
+  try {
+    setupDatabase(database);
+    database.exec("ALTER TABLE papers DROP COLUMN subtitle");
+    const originalPaper = { ...database.prepare("SELECT * FROM papers").get() };
+    const originalComment = { ...database.prepare("SELECT * FROM comments").get() };
+    const originalDocument = { ...database.prepare("SELECT * FROM paper_documents").get() };
+    assert.equal(needsPublicMigration(database), false);
+    assert.equal(database.prepare("PRAGMA table_info(papers)").all().filter(column => column.name === "subtitle").length, 0);
+    setupDatabase(database);
+    assert.deepEqual({ ...database.prepare("SELECT * FROM papers").get() }, { ...originalPaper, subtitle: "" });
+    database.prepare("UPDATE papers SET subtitle=? WHERE id=?").run("PICASSO", "paper-1");
+    setupDatabase(database);
+    assert.deepEqual({ ...database.prepare("SELECT * FROM papers").get() }, { ...originalPaper, subtitle: "PICASSO" });
+    assert.deepEqual({ ...database.prepare("SELECT * FROM comments").get() }, originalComment);
+    assert.deepEqual({ ...database.prepare("SELECT * FROM paper_documents").get() }, originalDocument);
+    assert.equal(database.prepare("PRAGMA table_info(papers)").all().filter(column => column.name === "subtitle").length, 1);
+    assert.deepEqual(database.prepare("PRAGMA foreign_key_check").all(), []);
   } finally { database.close(); }
 });
 

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePaperForm } from "@/hooks/use-paper-form";
-import { getPaperStatuses, type Paper } from "@/lib/types";
+import { getPaperStatuses, PAPER_SUBTITLE_MAX_LENGTH, type Paper } from "@/lib/types";
 import { getPaperSections } from "@/lib/paper-sections";
 import { PDF_LIMITS, type PaperDocumentInfo } from "@/lib/document-types";
 import { SummaryDraft } from "./summary-draft";
@@ -27,6 +27,7 @@ export function PaperForm({ paper, defaultPresenter, cloudStorage, document, sum
     {error && <div role="alert" className="alert alert-error">{error}</div>}
     <fieldset disabled={pending} className="paper-fields">
       <label className="field">{text.title} <span className="muted">{text.required}</span><input name="title" required maxLength={500} value={values.title} onChange={event => setField("title", event.target.value)} placeholder={text.titlePlaceholder} /></label>
+      <label className="field">{text.subtitle} <span className="muted">{text.optional}</span><input name="subtitle" maxLength={PAPER_SUBTITLE_MAX_LENGTH} value={values.subtitle} onChange={event => setField("subtitle", event.target.value)} placeholder={text.subtitlePlaceholder} /></label>
       <div className="form-grid"><label className="field">{text.authors}<input name="authors" maxLength={500} value={values.authors} onChange={event => setField("authors", event.target.value)} placeholder={text.authorsPlaceholder} /></label><label className="field">{text.sourceLink}<input type="url" name="url" maxLength={2000} value={values.url} onChange={event => setField("url", event.target.value)} placeholder="https://" /></label></div>
       <div className="form-grid"><label className="field">{text.presentationDate}<input type="date" name="meetingDate" value={values.meetingDate} onChange={event => setField("meetingDate", event.target.value)} /></label><label className="field">{text.presenter}<input name="presenter" maxLength={100} value={values.presenter} onChange={event => setField("presenter", event.target.value)} /></label></div>
       <label className="field">{text.presentationStatus}<select name="status" value={values.status} onChange={event => setField("status", event.target.value as Paper["status"])}>{Object.entries(getPaperStatuses(locale)).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>

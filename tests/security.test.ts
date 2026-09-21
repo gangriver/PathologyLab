@@ -39,14 +39,60 @@ test("로그인 없는 논문·토론 저장과 변경 요청 검증", async (t)
       assert.ok(id);
       const detail = await paperRoute.GET(request("/api/papers/" + id), context());
       assert.equal(detail.status, 200);
-      const saved = await detail.json() as { paper: { creatorName: string; limitations: string } };
+      const saved = await detail.json() as { paper: { subtitle: string; creatorName: string; limitations: string } };
       assert.ok(!("createdBy" in saved.paper));
       assert.equal(saved.paper.creatorName, "방문자");
       assert.equal(saved.paper.limitations, input.limitations);
+      assert.equal(saved.paper.subtitle, "");
       const secondConnection = new DatabaseSync(process.env.DATABASE_PATH!);
       try {
         assert.equal(secondConnection.prepare("SELECT title FROM papers WHERE id=?").get(id)?.title, input.title);
       } finally { secondConnection.close(); }
+    });
+    await t.test("부제목은 공백을 정리해 등록·조회하고 수정 누락은 보존하며 빈 입력으로 지울 수 있음", async () => {
+      const created = await papers.POST(request("/api/papers", "POST", { ...input, subtitle: "  PICASSO  " }));
+      assert.equal(created.status, 201);
+      const subtitleId = (await created.json() as { id: string }).id;
+      const subtitleContext = () => ({ params: Promise.resolve({ id: subtitleId }) });
+      async function savedSubtitle() {
+        const response = await paperRoute.GET(request("/api/papers/" + subtitleId), subtitleContext());
+        assert.equal(response.status, 200);
+        return (await response.json() as { paper: { subtitle: string } }).paper.subtitle;
+      }
+      try {
+        assert.equal(await savedSubtitle(), "PICASSO");
+        const list = await (await papers.GET()).json() as { id: string; subtitle: string }[];
+        assert.equal(list.find(paper => paper.id === subtitleId)?.subtitle, "PICASSO");
+        for (const [revision, change, expected] of [
+          [1, { subtitle: "  STORM  " }, "STORM"],
+          [2, {}, "STORM"],
+          [3, { subtitle: "   " }, ""],
+          [4, { subtitle: "가".repeat(200) }, "가".repeat(200)],
+        ] as const) {
+          const response = await paperRoute.PATCH(request("/api/papers/" + subtitleId, "PATCH", { ...input, ...change, revision }), subtitleContext());
+          assert.equal(response.status, 200);
+          assert.equal(await savedSubtitle(), expected);
+        }
+      } finally { db.prepare("DELETE FROM papers WHERE id=?").run(subtitleId); }
+    });
+    await t.test("부제목의 잘못된 타입과 200자 초과는 등록·수정 전에 거부하고 한영 오류를 안내", async () => {
+      const before = db.prepare("SELECT count(*) AS count FROM papers").get()?.count;
+      for (const [locale, typeError, lengthError] of [
+        ["ko", "입력 내용을 확인해주세요.", "200자 이내로 작성해주세요."],
+        ["en", "Please check your input.", "Use no more than 200 characters."],
+      ]) {
+        for (const subtitle of [null, 123, [], "가".repeat(201)]) {
+          for (const method of ["POST", "PATCH"]) {
+            const req = request("/api/papers/" + id, method, { ...input, subtitle, revision: 1 });
+            req.headers.set("cookie", `lab-locale=${locale}`);
+            const response = method === "POST" ? await papers.POST(req) : await paperRoute.PATCH(req, context());
+            assert.equal(response.status, 422);
+            assert.equal((await response.json() as { error: string }).error, typeof subtitle === "string" ? lengthError : typeError);
+          }
+        }
+      }
+      assert.equal(db.prepare("SELECT count(*) AS count FROM papers").get()?.count, before);
+      assert.deepEqual({ ...db.prepare("SELECT subtitle,revision FROM papers WHERE id=?").get(id) }, { subtitle: "", revision: 1 });
     });
     await t.test("외부 출처와 빈 출처의 등록·수정·삭제·토론 요청 차단", async () => {
       for (const origin of ["https://outside.test", ""]) {

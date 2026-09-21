@@ -68,7 +68,8 @@ async function checkStoredPdf(document: DocumentRow, content: Uint8Array): Promi
 }
 
 async function migrate(database: DatabaseSync) {
-  const papers = database.prepare(`SELECT id, title, authors, url, researchQuestion, methods, findings,
+  const hasSubtitle = database.prepare("PRAGMA table_info(papers)").all().some(column => column.name === "subtitle");
+  const papers = database.prepare(`SELECT id, title, ${hasSubtitle ? "subtitle" : "'' AS subtitle"}, authors, url, researchQuestion, methods, findings,
     limitations, meetingDate, presenter, status, creatorName, createdAt, updatedAt, revision FROM papers`).all() as unknown as Paper[];
   const comments = database.prepare("SELECT id, paperId, authorName, content, createdAt FROM comments").all() as unknown as Comment[];
   const documents = (database.prepare(`SELECT id, paperId, filename, byteLength, pagesJson,

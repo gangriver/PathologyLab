@@ -4,6 +4,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS public.papers (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
+  subtitle TEXT NOT NULL DEFAULT '',
   authors TEXT NOT NULL DEFAULT '',
   url TEXT NOT NULL DEFAULT '',
   "researchQuestion" TEXT NOT NULL DEFAULT '',
@@ -18,6 +19,8 @@ CREATE TABLE IF NOT EXISTS public.papers (
   "updatedAt" TIMESTAMPTZ NOT NULL,
   revision INTEGER NOT NULL DEFAULT 1 CHECK (revision > 0)
 );
+
+ALTER TABLE public.papers ADD COLUMN IF NOT EXISTS subtitle TEXT NOT NULL DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS public.comments (
   id TEXT PRIMARY KEY,
@@ -77,7 +80,8 @@ BEGIN
     RAISE SQLSTATE 'PT409' USING MESSAGE = 'revision_conflict';
   END IF;
   UPDATE public.papers SET
-    title = p_input->>'title', authors = p_input->>'authors', url = p_input->>'url',
+    title = p_input->>'title', subtitle = COALESCE(p_input->>'subtitle', subtitle),
+    authors = p_input->>'authors', url = p_input->>'url',
     "researchQuestion" = p_input->>'researchQuestion', methods = p_input->>'methods',
     findings = p_input->>'findings', limitations = p_input->>'limitations',
     "meetingDate" = p_input->>'meetingDate', presenter = p_input->>'presenter', status = p_input->>'status',

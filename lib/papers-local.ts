@@ -2,9 +2,9 @@ import { randomUUID } from "node:crypto";
 import { db } from "./db";
 import { ApiError } from "./api";
 import type { Paper, Comment } from "./types";
-import type { PaperInput } from "./validation";
+import type { PaperInput, PaperUpdateInput } from "./validation";
 
-const paperSelect = "SELECT id,title,authors,url,researchQuestion,methods,findings,limitations,meetingDate,presenter,status,creatorName,createdAt,updatedAt,revision FROM papers";
+const paperSelect = "SELECT id,title,subtitle,authors,url,researchQuestion,methods,findings,limitations,meetingDate,presenter,status,creatorName,createdAt,updatedAt,revision FROM papers";
 export function listPapers(): Paper[] {
   return db.prepare(paperSelect + " ORDER BY meetingDate DESC, createdAt DESC").all().map(row => ({ ...row })) as unknown as Paper[];
 }
@@ -15,14 +15,14 @@ export function findPaper(id: string): Paper | undefined {
 export function createPaper(input: PaperInput) {
   const id = randomUUID();
   const now = new Date().toISOString();
-  db.prepare(`INSERT INTO papers (id,title,authors,url,researchQuestion,methods,findings,limitations,meetingDate,presenter,status,createdAt,updatedAt)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,input.title,input.authors,input.url,input.researchQuestion,input.methods,input.findings,input.limitations,input.meetingDate,input.presenter,input.status,now,now);
+  db.prepare(`INSERT INTO papers (id,title,subtitle,authors,url,researchQuestion,methods,findings,limitations,meetingDate,presenter,status,createdAt,updatedAt)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,input.title,input.subtitle,input.authors,input.url,input.researchQuestion,input.methods,input.findings,input.limitations,input.meetingDate,input.presenter,input.status,now,now);
   return { id };
 }
-export function editPaper(id: string, input: PaperInput, revision: number) {
+export function editPaper(id: string, input: PaperUpdateInput, revision: number) {
   assertPaperExists(id);
-  const result = db.prepare(`UPDATE papers SET title=?,authors=?,url=?,researchQuestion=?,methods=?,findings=?,limitations=?,meetingDate=?,presenter=?,status=?,updatedAt=?,revision=revision+1 WHERE id=? AND revision=?`)
-    .run(input.title,input.authors,input.url,input.researchQuestion,input.methods,input.findings,input.limitations,input.meetingDate,input.presenter,input.status,new Date().toISOString(),id,revision);
+  const result = db.prepare(`UPDATE papers SET title=?,subtitle=COALESCE(?,subtitle),authors=?,url=?,researchQuestion=?,methods=?,findings=?,limitations=?,meetingDate=?,presenter=?,status=?,updatedAt=?,revision=revision+1 WHERE id=? AND revision=?`)
+    .run(input.title,input.subtitle ?? null,input.authors,input.url,input.researchQuestion,input.methods,input.findings,input.limitations,input.meetingDate,input.presenter,input.status,new Date().toISOString(),id,revision);
   if (!result.changes) throw new ApiError(409, "다른 곳에서 논문이 변경되었습니다. 새로고침 후 다시 확인해주세요.");
   return { id };
 }

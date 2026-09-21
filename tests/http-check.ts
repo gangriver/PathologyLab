@@ -6,6 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { makePdf } from "./pdf-fixture";
 import { PDF_LIMITS } from "../lib/document-types";
+import { PAPER_SUBTITLE_MAX_LENGTH } from "../lib/types";
 
 async function main() {
   for (const route of ["import", "[id]/pdf"]) {
@@ -139,15 +140,35 @@ async function main() {
     const list = await get("/api/papers");
     assert.equal(list.status, 200);
     assert.equal((await list.json() as { id: string }[])[0].id, id);
-    const manual = await mutate("/api/papers", "POST", { ...paper, title: "수동 등록 HTTP 검증" });
+    const manualInput = { ...paper, title: "수동 등록 HTTP 검증", subtitle: "STORM <script>alert(1)</script>" };
+    const manual = await mutate("/api/papers", "POST", manualInput);
     assert.equal(manual.status, 201);
     const manualId = (await manual.json() as { id: string }).id;
-    assert.equal((await mutate("/api/papers/" + manualId, "DELETE", { revision: 1 })).status, 200);
+    for (const locale of ["ko", "en"]) {
+      const html = await (await get("/papers/" + manualId, locale)).text();
+      const header = html.match(/<header class="detail-header">([\s\S]*?)<\/header>/)?.[1] ?? "";
+      const escapedSubtitle = "STORM &lt;script&gt;alert(1)&lt;/script&gt;";
+      assert.ok(header.includes(escapedSubtitle));
+      assert.ok(header.indexOf(manualInput.title) < header.indexOf(escapedSubtitle));
+      assert.ok(header.indexOf(escapedSubtitle) < header.indexOf(basicInfo.authors));
+      assert.doesNotMatch(header, /<script>/);
+      const formHtml = await (await get("/papers/" + manualId + "/edit", locale)).text();
+      const subtitleInput = (formHtml.match(/<input\b[^>]*>/g) ?? []).find(input => input.includes('name="subtitle"')) ?? "";
+      assert.ok(subtitleInput.includes('value="' + escapedSubtitle + '"'));
+      assert.match(subtitleInput, new RegExp('maxLength="' + PAPER_SUBTITLE_MAX_LENGTH + '"', "i"));
+      assert.ok(formHtml.includes(locale === "ko" ? "부제목" : "Subtitle"));
+    }
+    assert.equal((await mutate("/api/papers/" + manualId, "PATCH", { ...manualInput, subtitle: "", revision: 1 })).status, 200);
+    const clearedHtml = await (await get("/papers/" + manualId)).text();
+    const clearedHeader = clearedHtml.match(/<header class="detail-header">([\s\S]*?)<\/header>/)?.[1] ?? "";
+    assert.equal((clearedHeader.match(/<p\b/g) ?? []).length, 1);
+    assert.doesNotMatch(clearedHeader, /STORM/);
+    assert.equal((await mutate("/api/papers/" + manualId, "DELETE", { revision: 2 })).status, 200);
     assert.equal((await mutate("/api/papers/" + id, "DELETE", { revision: 2 })).status, 200);
     assert.equal((await get("/api/papers/" + id)).status, 404);
     assert.equal((await get("/api/papers/" + id + "/pdf")).status, 404);
     assert.equal(db.prepare("SELECT count(*) AS count FROM comments WHERE paperId=?").get(id)?.count, 0);
-    console.log("프로덕션 HTTP 검증 통과: 한영 화면·영문 이름·언어별 오류·원문 보존·언어 쿠키 격리, PDF 최대 용량 업로드·다운로드, PDF 기본정보 자동 입력, 공개 등록·편집·토론·삭제");
+    console.log("프로덕션 HTTP 검증 통과: 한영 화면·영문 이름·언어별 오류·원문 보존·언어 쿠키 격리, 부제목 저장·표시 순서·빈값 생략·HTML 이스케이프, PDF 최대 용량 업로드·다운로드, PDF 기본정보 자동 입력, 공개 등록·편집·토론·삭제");
   } finally {
     if (child.exitCode === null) { child.kill(); await once(child, "exit"); }
     db.close();

@@ -19,7 +19,7 @@ test("클라우드 논문 API와 PDF 저장 경로의 연결", async t => {
   process.env.R2_SECRET_ACCESS_KEY = "test-secret-key";
   const fixture = makePdf(["We evaluated cell classification using an independent validation set."], { title: "Cloud Pathology Study", author: "Test Researcher" });
   const paper: Paper = {
-    id: "06a790f3-d963-45b8-8720-5bcb2b7f2275", title: "기존 논문", authors: "기존 저자", url: "",
+    id: "06a790f3-d963-45b8-8720-5bcb2b7f2275", title: "기존 논문", subtitle: "PICASSO", authors: "기존 저자", url: "",
     researchQuestion: "", methods: "", findings: "", limitations: "", meetingDate: "", presenter: "발표자", status: "planned",
     creatorName: "방문자", createdAt: "2026-09-18T00:00:00.000Z", updatedAt: "2026-09-18T00:00:00.000Z", revision: 1,
   };
@@ -136,6 +136,7 @@ test("클라우드 논문 API와 PDF 저장 경로의 연결", async t => {
       assert.equal(document.pageCount, 1);
       assert.match(document.pagesJson, /independent validation set/);
       assert.equal(input.title, "Cloud Pathology Study");
+      assert.equal(input.subtitle, "");
       assert.equal(input.authors, "Test Researcher");
       assert.match(document.storageKey, /^papers\/[0-9a-f-]{36}\.pdf$/);
       assert.deepEqual(events.slice(0, 3), [`queue:${document.storageKey}`, `put:${document.storageKey}`, "rpc/lab_import_paper"]);
@@ -159,6 +160,23 @@ test("클라우드 논문 API와 PDF 저장 경로의 연결", async t => {
       assert.ok(url.searchParams.has("X-Amz-Signature"));
       assert.equal(puts.length, 0);
       assert.equal(deletions.length, 0);
+    });
+    await t.test("부제목 수정은 공백을 정리해 RPC로 전달하고 누락한 필드는 임의로 비우지 않음", async () => {
+      reset();
+      respondRpc = resource => {
+        assert.equal(resource, "rpc/lab_edit_paper");
+        return Response.json({ id: paper.id });
+      };
+      for (const subtitle of ["  STORM  ", "   ", undefined]) {
+        const response = await paperRoute.PATCH(request("PATCH", { ...paper, subtitle }), context());
+        assert.equal(response.status, 200);
+        const rpc = calls.at(-1)!;
+        assert.equal(rpc.resource, "rpc/lab_edit_paper");
+        assert.equal(rpc.body.p_revision, 1);
+        const input = rpc.body.p_input as Record<string, unknown>;
+        assert.equal(input.subtitle, subtitle?.trim());
+        assert.equal("subtitle" in input, subtitle !== undefined);
+      }
     });
     await t.test("PDF 교체는 기존 버전을 RPC에 전달하고 새 버전과 공개 첨부 정보만 반환", async () => {
       reset();

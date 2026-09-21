@@ -23,7 +23,7 @@ function storeDocument(paperId: string, filename: string, content: Uint8Array, e
 export function importPaper(filename: string, content: Uint8Array, extracted: ExtractedPdf) {
   const input: PaperInput = {
     title: extracted.basicInfo.title || filename.replace(/\.pdf$/i, "") || "새 논문",
-    authors: extracted.basicInfo.authors, url: extracted.basicInfo.url, researchQuestion: "", methods: "", findings: "", limitations: "",
+    subtitle: "", authors: extracted.basicInfo.authors, url: extracted.basicInfo.url, researchQuestion: "", methods: "", findings: "", limitations: "",
     meetingDate: "", presenter: "", status: "planned",
   };
   db.exec("BEGIN IMMEDIATE");

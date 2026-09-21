@@ -19,7 +19,7 @@ test("클라우드 데이터 경계와 원자 변경 요청", async (t) => {
     return respond();
   });
   const input: PaperInput = {
-    title: "검증 논문", authors: "저자", url: "", researchQuestion: "", methods: "", findings: "", limitations: "",
+    title: "검증 논문", subtitle: "PICASSO", authors: "저자", url: "", researchQuestion: "", methods: "", findings: "", limitations: "",
     meetingDate: "", presenter: "발표자", status: "planned",
   };
   const document: documents.StoredDocument = {
@@ -44,6 +44,7 @@ test("클라우드 데이터 경계와 원자 변경 요청", async (t) => {
       assert.equal(last().options.cache, "no-store");
       assert.ok(last().options.signal instanceof AbortSignal);
       assert.equal(last().url.searchParams.get("order"), "meetingDate.desc,createdAt.desc");
+      assert.ok(last().url.searchParams.get("select")?.split(",").includes("subtitle"));
     });
     await t.test("외부 호스트와 잘못된 키는 요청하기 전에 차단", async () => {
       const before = calls.length;
@@ -85,6 +86,7 @@ test("클라우드 데이터 경계와 원자 변경 요청", async (t) => {
       assert.equal(last().url.searchParams.get("id"), `eq.${id}`);
       assert.ok(!last().url.searchParams.get("select")?.includes("storageKey"));
       assert.equal(last().url.searchParams.getAll("select").length, 1);
+      assert.ok(last().url.searchParams.get("select")?.split(",").includes("subtitle"));
       await assert.rejects(papers.assertPaperExists(id), (error: unknown) => error instanceof ApiError && error.status === 404);
     });
     await t.test("논문 등록은 서버 발급 ID와 허용된 입력 필드만 저장", async () => {
@@ -94,6 +96,7 @@ test("클라우드 데이터 경계와 원자 변경 요청", async (t) => {
       assert.equal(body.id, result.id);
       assert.match(result.id, /^[0-9a-f-]{36}$/);
       assert.equal(body.title, input.title);
+      assert.equal(body.subtitle, input.subtitle);
       assert.equal(body.creatorName, undefined);
       assert.equal(body.revision, undefined);
     });
@@ -120,6 +123,7 @@ test("클라우드 데이터 경계와 원자 변경 요청", async (t) => {
       assert.deepEqual(await documents.importStoredPaper(document, extracted), { id: "paper-id" });
       assert.equal(last().url.pathname, "/rest/v1/rpc/lab_import_paper");
       assert.equal((lastBody().p_input as PaperInput).title, extracted.basicInfo.title);
+      assert.equal((lastBody().p_input as PaperInput).subtitle, "");
       assert.deepEqual(lastBody().p_document, document);
       respond = async () => Response.json({ revision: 2, previousStorageKey: "papers/old.pdf" });
       const result = await documents.replaceStoredDocument("paper-id", document, extracted, 1);

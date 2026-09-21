@@ -6,10 +6,17 @@ export function needsPublicMigration(database: DatabaseSync): boolean {
   return database.prepare("PRAGMA foreign_key_list(papers)").all().some(row => row.table === "user");
 }
 
+function addSubtitleColumn(database: DatabaseSync) {
+  if (!database.prepare("PRAGMA table_info(papers)").all().some(row => row.name === "subtitle")) {
+    database.exec("ALTER TABLE papers ADD COLUMN subtitle TEXT NOT NULL DEFAULT ''");
+  }
+}
+
 export function setupDatabase(database: DatabaseSync) {
   const schema = readFileSync(resolve("db/schema.sql"), "utf8");
   if (!needsPublicMigration(database)) {
     database.exec(schema);
+    addSubtitleColumn(database);
     return;
   }
 
@@ -19,14 +26,15 @@ export function setupDatabase(database: DatabaseSync) {
   try {
     database.exec("BEGIN IMMEDIATE");
     try {
+      addSubtitleColumn(database);
       if (hasComments) database.exec("ALTER TABLE comments RENAME TO migration_comments");
       if (hasDocuments) database.exec("ALTER TABLE paper_documents RENAME TO migration_paper_documents");
       database.exec("ALTER TABLE papers RENAME TO migration_papers");
       database.exec(schema);
       database.exec(`INSERT INTO papers (
-        id,title,authors,url,researchQuestion,methods,findings,limitations,meetingDate,presenter,status,
+        id,title,subtitle,authors,url,researchQuestion,methods,findings,limitations,meetingDate,presenter,status,
         createdBy,creatorName,createdAt,updatedAt,revision
-      ) SELECT p.id,p.title,p.authors,p.url,p.researchQuestion,p.methods,p.findings,p.limitations,p.meetingDate,p.presenter,p.status,
+      ) SELECT p.id,p.title,p.subtitle,p.authors,p.url,p.researchQuestion,p.methods,p.findings,p.limitations,p.meetingDate,p.presenter,p.status,
         p.createdBy,COALESCE(u.name,'방문자'),p.createdAt,p.updatedAt,p.revision
         FROM migration_papers p LEFT JOIN user u ON u.id=p.createdBy`);
       if (hasComments) {

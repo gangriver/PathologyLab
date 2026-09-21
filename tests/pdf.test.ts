@@ -207,14 +207,14 @@ test("공개 PDF 첨부와 AI 요약의 저장·오류 처리", async (t) => {
       assert.equal(response.status, 201);
       const importedId = (await response.json() as { id: string }).id;
       try {
-        const saved = db.prepare("SELECT title,authors,url FROM papers WHERE id=?").get(importedId);
-        assert.deepEqual({ ...saved }, basicInfo);
-        const preserved = { title: "사용자가 정리한 제목", authors: "기존 저자", url: "https://example.org/original", findings: "직접 정리한 핵심 내용" };
-        db.prepare("UPDATE papers SET title=?,authors=?,url=?,findings=? WHERE id=?").run(preserved.title, preserved.authors, preserved.url, preserved.findings, importedId);
+        const saved = db.prepare("SELECT title,subtitle,authors,url FROM papers WHERE id=?").get(importedId);
+        assert.deepEqual({ ...saved }, { ...basicInfo, subtitle: "" });
+        const preserved = { title: "사용자가 정리한 제목", subtitle: "PICASSO", authors: "기존 저자", url: "https://example.org/original", findings: "직접 정리한 핵심 내용" };
+        db.prepare("UPDATE papers SET title=?,subtitle=?,authors=?,url=?,findings=? WHERE id=?").run(preserved.title, preserved.subtitle, preserved.authors, preserved.url, preserved.findings, importedId);
         const replaced = await pdfRoute.POST(upload(metadataFixture, 1), { params: Promise.resolve({ id: importedId }) });
         assert.equal(replaced.status, 200);
         assert.deepEqual((await replaced.json() as { basicInfo: typeof basicInfo }).basicInfo, basicInfo);
-        assert.deepEqual({ ...db.prepare("SELECT title,authors,url,findings FROM papers WHERE id=?").get(importedId) }, preserved);
+        assert.deepEqual({ ...db.prepare("SELECT title,subtitle,authors,url,findings FROM papers WHERE id=?").get(importedId) }, preserved);
         assert.equal(fetchMock.mock.callCount(), 0);
       } finally { db.prepare("DELETE FROM papers WHERE id=?").run(importedId); }
     });
@@ -226,7 +226,7 @@ test("공개 PDF 첨부와 AI 요약의 저장·오류 처리", async (t) => {
       assert.equal(document.filename, "검증 논문.pdf");
       assert.equal(document.pageCount, 2);
       assert.ok(!("content" in document));
-      assert.deepEqual({ ...db.prepare("SELECT title,authors,url FROM papers WHERE id=?").get(id) }, { title: "검증 논문", authors: "", url: "" });
+      assert.deepEqual({ ...db.prepare("SELECT title,subtitle,authors,url FROM papers WHERE id=?").get(id) }, { title: "검증 논문", subtitle: "", authors: "", url: "" });
       const download = await pdfRoute.GET(request("GET"), context());
       assert.equal(download.status, 200);
       assert.equal(download.headers.get("cache-control"), "private, no-store");

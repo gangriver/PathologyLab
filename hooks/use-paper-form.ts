@@ -19,7 +19,7 @@ export function usePaperForm(defaultPresenter: string, cloudStorage: boolean, pa
   const pending = requesting || navigating;
   useEffect(() => { onPendingChange?.(pending); }, [pending, onPendingChange]);
   const [values, setValues] = useState<PaperInput>(() => ({
-    title: paper?.title ?? "", authors: paper?.authors ?? "", url: paper?.url ?? "",
+    title: paper?.title ?? "", subtitle: paper?.subtitle ?? "", authors: paper?.authors ?? "", url: paper?.url ?? "",
     researchQuestion: paper?.researchQuestion ?? "", methods: paper?.methods ?? "",
     findings: paper?.findings ?? "", limitations: paper?.limitations ?? "",
     meetingDate: paper?.meetingDate ?? "", presenter: paper?.presenter ?? defaultPresenter, status: paper?.status ?? "planned",

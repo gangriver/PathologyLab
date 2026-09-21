@@ -2,9 +2,9 @@ import { randomUUID } from "node:crypto";
 import { ApiError } from "./api";
 import { supabaseRequest } from "./supabase";
 import type { Comment, Paper } from "./types";
-import type { PaperInput } from "./validation";
+import type { PaperInput, PaperUpdateInput } from "./validation";
 
-const paperColumns = "id,title,authors,url,researchQuestion,methods,findings,limitations,meetingDate,presenter,status,creatorName,createdAt,updatedAt,revision";
+const paperColumns = "id,title,subtitle,authors,url,researchQuestion,methods,findings,limitations,meetingDate,presenter,status,creatorName,createdAt,updatedAt,revision";
 
 export async function listPapers(): Promise<Paper[]> {
   return supabaseRequest<Paper[]>("papers", { query: { select: paperColumns, order: "meetingDate.desc,createdAt.desc" } });
@@ -18,14 +18,14 @@ export async function createPaper(input: PaperInput): Promise<{ id: string }> {
   const now = new Date().toISOString();
   await supabaseRequest<void>("papers", {
     method: "POST", prefer: "return=minimal", body: {
-      id, title: input.title, authors: input.authors, url: input.url, researchQuestion: input.researchQuestion,
+      id, title: input.title, subtitle: input.subtitle, authors: input.authors, url: input.url, researchQuestion: input.researchQuestion,
       methods: input.methods, findings: input.findings, limitations: input.limitations, meetingDate: input.meetingDate,
       presenter: input.presenter, status: input.status, createdAt: now, updatedAt: now,
     },
   });
   return { id };
 }
-export async function editPaper(id: string, input: PaperInput, revision: number): Promise<{ id: string }> {
+export async function editPaper(id: string, input: PaperUpdateInput, revision: number): Promise<{ id: string }> {
   return supabaseRequest("rpc/lab_edit_paper", { method: "POST", body: { p_id: id, p_input: input, p_revision: revision } });
 }
 export async function removePaper(id: string, revision: number): Promise<{ success: true; storageKey?: string }> {
