@@ -148,10 +148,15 @@ async function main() {
       const html = await (await get("/papers/" + manualId, locale)).text();
       const header = html.match(/<header class="detail-header">([\s\S]*?)<\/header>/)?.[1] ?? "";
       const escapedSubtitle = "STORM &lt;script&gt;alert(1)&lt;/script&gt;";
-      assert.ok(header.includes(escapedSubtitle));
-      assert.ok(header.indexOf(manualInput.title) < header.indexOf(escapedSubtitle));
+      const expectedHeading = manualInput.title + " [" + escapedSubtitle + "]";
+      assert.equal(header.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/)?.[1], expectedHeading);
+      assert.equal((header.match(/<p\b/g) ?? []).length, 1);
       assert.ok(header.indexOf(escapedSubtitle) < header.indexOf(basicInfo.authors));
       assert.doesNotMatch(header, /<script>/);
+      const archiveHtml = await (await get("/papers", locale)).text();
+      const row = (archiveHtml.match(/<a\b[^>]*class="paper-row"[^>]*>[\s\S]*?<\/a>/g) ?? []).find(item => item.includes('href="/papers/' + manualId + '"')) ?? "";
+      assert.equal(row.match(/<h2\b[^>]*>([\s\S]*?)<\/h2>/)?.[1], expectedHeading);
+      assert.doesNotMatch(row, /<script>/);
       const formHtml = await (await get("/papers/" + manualId + "/edit", locale)).text();
       const subtitleInput = (formHtml.match(/<input\b[^>]*>/g) ?? []).find(input => input.includes('name="subtitle"')) ?? "";
       assert.ok(subtitleInput.includes('value="' + escapedSubtitle + '"'));
@@ -159,16 +164,22 @@ async function main() {
       assert.ok(formHtml.includes(locale === "ko" ? "부제목" : "Subtitle"));
     }
     assert.equal((await mutate("/api/papers/" + manualId, "PATCH", { ...manualInput, subtitle: "", revision: 1 })).status, 200);
-    const clearedHtml = await (await get("/papers/" + manualId)).text();
-    const clearedHeader = clearedHtml.match(/<header class="detail-header">([\s\S]*?)<\/header>/)?.[1] ?? "";
-    assert.equal((clearedHeader.match(/<p\b/g) ?? []).length, 1);
-    assert.doesNotMatch(clearedHeader, /STORM/);
+    for (const locale of ["ko", "en"]) {
+      const clearedHtml = await (await get("/papers/" + manualId, locale)).text();
+      const clearedHeader = clearedHtml.match(/<header class="detail-header">([\s\S]*?)<\/header>/)?.[1] ?? "";
+      assert.equal(clearedHeader.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/)?.[1], manualInput.title);
+      assert.equal((clearedHeader.match(/<p\b/g) ?? []).length, 1);
+      assert.doesNotMatch(clearedHeader, /STORM/);
+      const archiveHtml = await (await get("/papers", locale)).text();
+      const row = (archiveHtml.match(/<a\b[^>]*class="paper-row"[^>]*>[\s\S]*?<\/a>/g) ?? []).find(item => item.includes('href="/papers/' + manualId + '"')) ?? "";
+      assert.equal(row.match(/<h2\b[^>]*>([\s\S]*?)<\/h2>/)?.[1], manualInput.title);
+    }
     assert.equal((await mutate("/api/papers/" + manualId, "DELETE", { revision: 2 })).status, 200);
     assert.equal((await mutate("/api/papers/" + id, "DELETE", { revision: 2 })).status, 200);
     assert.equal((await get("/api/papers/" + id)).status, 404);
     assert.equal((await get("/api/papers/" + id + "/pdf")).status, 404);
     assert.equal(db.prepare("SELECT count(*) AS count FROM comments WHERE paperId=?").get(id)?.count, 0);
-    console.log("프로덕션 HTTP 검증 통과: 한영 화면·영문 이름·언어별 오류·원문 보존·언어 쿠키 격리, 부제목 저장·표시 순서·빈값 생략·HTML 이스케이프, PDF 최대 용량 업로드·다운로드, PDF 기본정보 자동 입력, 공개 등록·편집·토론·삭제");
+    console.log("프로덕션 HTTP 검증 통과: 한영 화면·영문 이름·언어별 오류·원문 보존·언어 쿠키 격리, 부제목 저장·목록과 상세의 제목 [부제목] 표시·빈값 생략·HTML 이스케이프, PDF 최대 용량 업로드·다운로드, PDF 기본정보 자동 입력, 공개 등록·편집·토론·삭제");
   } finally {
     if (child.exitCode === null) { child.kill(); await once(child, "exit"); }
     db.close();

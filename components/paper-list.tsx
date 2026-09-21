@@ -4,6 +4,7 @@ import { useLocale } from "@/hooks/use-locale";
 import { usePaperFilters } from "@/hooks/use-paper-filters";
 import { formatArchiveDate, getArchiveMessages } from "@/lib/i18n-archive";
 import { getPaperStatuses, type Paper, type PaperStatus } from "@/lib/types";
+import { formatPaperTitle } from "@/lib/paper-title";
 
 export function PaperList({ papers }: { papers: Paper[] }) {
   const { locale } = useLocale();
@@ -15,6 +16,6 @@ export function PaperList({ papers }: { papers: Paper[] }) {
       <div className="filters" aria-label={messages.statusFilterLabel}><button className="filter" aria-pressed={status === "all"} onClick={() => setStatus("all")}>{messages.all} {papers.length}</button>{Object.entries(paperStatuses).map(([key, label]) => <button key={key} className="filter" aria-pressed={status === key} onClick={() => setStatus(key as PaperStatus)}>{label}</button>)}</div>
     </div>
     {!filtered.length ? <div className="empty-state"><h2>{papers.length ? messages.noMatchesTitle : messages.emptyTitle}</h2><p>{papers.length ? messages.noMatchesDescription : messages.emptyDescription}</p>{!papers.length && <Link className="button" href="/papers/new">{messages.addFirstPaper} <span aria-hidden="true">+</span></Link>}</div> :
-      <div className="paper-list">{filtered.map(paper => <Link className="paper-row" href={"/papers/" + paper.id} key={paper.id}><span className={"badge " + (paper.status === "discussed" ? "badge-done" : "")}>{paperStatuses[paper.status]}</span><h2>{paper.title}</h2><p className="muted">{paper.authors || messages.missingAuthors}</p><div className="paper-meta" style={{ marginTop: 17 }}><span>{messages.presentationDate} {paper.meetingDate ? formatArchiveDate(paper.meetingDate, locale) : messages.undecided}</span><span>{messages.presenter} {paper.presenter || messages.undecided}</span></div></Link>)}</div>}
+      <div className="paper-list">{filtered.map(paper => <Link className="paper-row" href={"/papers/" + paper.id} key={paper.id}><span className={"badge " + (paper.status === "discussed" ? "badge-done" : "")}>{paperStatuses[paper.status]}</span><h2>{formatPaperTitle(paper)}</h2><p className="muted">{paper.authors || messages.missingAuthors}</p><div className="paper-meta" style={{ marginTop: 17 }}><span>{messages.presentationDate} {paper.meetingDate ? formatArchiveDate(paper.meetingDate, locale) : messages.undecided}</span><span>{messages.presenter} {paper.presenter || messages.undecided}</span></div></Link>)}</div>}
   </>;
 }
