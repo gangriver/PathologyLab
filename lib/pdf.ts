@@ -77,7 +77,7 @@ export async function extractPdf(content: Uint8Array): Promise<ExtractedPdf> {
         if (!payload.success) return reject(new ApiError(422, "PDF 내용을 읽지 못했습니다."));
         if (payload.data.result) return resolveResult(payload.data.result);
         const errors: Record<string, string> = {
-          pages: "60쪽 이하의 PDF를 업로드해주세요.",
+          pages: `${PDF_LIMITS.maxPages}쪽 이하의 PDF를 업로드해주세요.`,
           text: "추출한 본문이 너무 깁니다. 20만 자 이하의 문서를 사용해주세요.",
           password: "암호가 필요한 PDF입니다. 암호를 해제한 파일을 업로드해주세요.",
           invalid: "PDF 내용을 읽지 못했습니다. 손상되지 않은 파일인지 확인해주세요.",

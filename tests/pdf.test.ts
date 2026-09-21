@@ -124,6 +124,34 @@ test("공개 PDF 첨부와 AI 요약의 저장·오류 처리", async (t) => {
       await Promise.all([first, second]);
       assert.equal((await extractPdf(fixture)).pageCount, 2);
     });
+    await t.test("74쪽과 100쪽 PDF는 마지막 페이지까지 추출하고 원본과 함께 등록", async () => {
+      for (const pageCount of [74, 100]) {
+        const content = makePdf(Array.from({ length: pageCount }, (_, index) => `Page ${index + 1} of the page-limit test.`), { title: basicInfo.title });
+        const response = await imports.POST(upload(content));
+        assert.equal(response.status, 201);
+        const importedId = (await response.json() as { id: string }).id;
+        try {
+          const saved = (await getDocument(importedId))!;
+          assert.equal(saved.pageCount, pageCount);
+          assert.deepEqual(saved.content, content);
+          const pages = JSON.parse(saved.pagesJson) as { pageNumber: number; text: string }[];
+          assert.equal(pages.length, pageCount);
+          assert.deepEqual(pages.at(-1), { pageNumber: pageCount, text: `Page ${pageCount} of the page-limit test.` });
+          assert.equal(db.prepare("SELECT title FROM papers WHERE id=?").get(importedId)?.title, basicInfo.title);
+        } finally { db.prepare("DELETE FROM papers WHERE id=?").run(importedId); }
+      }
+    });
+    await t.test("101쪽 PDF는 저장하지 않고 선택한 언어로 100쪽 제한을 안내", async () => {
+      const content = makePdf(Array.from({ length: 101 }, () => "Page limit test."));
+      for (const [locale, message] of [["ko", "100쪽 이하의 PDF를 업로드해주세요."], ["en", "Please upload a PDF with no more than 100 pages."]]) {
+        const req = upload(content);
+        req.headers.set("cookie", `lab-locale=${locale}`);
+        const response = await imports.POST(req);
+        assert.equal(response.status, 422);
+        assert.equal((await response.json() as { error: string }).error, message);
+      }
+      assert.equal(db.prepare("SELECT count(*) AS count FROM papers").get()?.count, 0);
+    });
     await t.test("공개 업로드에서도 출처 위조와 PDF가 아닌 파일은 차단", async () => {
       for (const origin of ["https://outside.test", ""]) {
         assert.equal((await imports.POST(upload(fixture, undefined, "test.pdf", origin))).status, 403);

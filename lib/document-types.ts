@@ -1,6 +1,6 @@
 export const PDF_LIMITS = {
   maxBytes: 50 * 1024 * 1024,
-  maxPages: 60,
+  maxPages: 100,
   maxTextCharacters: 200000,
   parseTimeoutMs: 15000,
   maxConcurrentParsers: 2,
