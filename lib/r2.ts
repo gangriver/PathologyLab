@@ -23,7 +23,7 @@ function createStorage() {
       followRegionRedirects: false,
       maxAttempts: 1,
       requestChecksumCalculation: "WHEN_REQUIRED",
-      requestHandler: { connectionTimeout: 5000, requestTimeout: PDF_LIMITS.uploadTimeoutMs, throwOnRequestTimeout: true },
+      requestHandler: { connectionTimeout: 5000, requestTimeout: PDF_LIMITS.storageTransferTimeoutMs, throwOnRequestTimeout: true },
     }),
   };
 }
@@ -33,7 +33,7 @@ export async function putPdf(storageKey: string, content: Uint8Array, options?: 
   const { client, bucket } = createStorage();
   try {
     await client.send(new PutObjectCommand({ Bucket: bucket, Key: storageKey, Body: content, ContentType: "application/pdf", ContentLength: content.byteLength, ...(options?.ifAbsent ? { IfNoneMatch: "*" } : {}) }), {
-      abortSignal: AbortSignal.timeout(PDF_LIMITS.uploadTimeoutMs),
+      abortSignal: AbortSignal.timeout(PDF_LIMITS.storageTransferTimeoutMs),
     });
   } catch (error) {
     if (error instanceof S3ServiceException && error.$metadata.httpStatusCode === 412) throw new ApiError(409, "이미 저장된 PDF 파일입니다.");
@@ -79,7 +79,7 @@ export async function getPdf(storageKey: string): Promise<Uint8Array> {
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   try {
     const response = await fetch(await getPdfUrl(storageKey, "paper.pdf"), {
-      redirect: "error", cache: "no-store", signal: AbortSignal.timeout(PDF_LIMITS.uploadTimeoutMs),
+      redirect: "error", cache: "no-store", signal: AbortSignal.timeout(PDF_LIMITS.storageTransferTimeoutMs),
     });
     if (!response.ok || !response.body) {
       await response.body?.cancel();

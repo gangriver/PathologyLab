@@ -158,9 +158,9 @@ test("공개 PDF 첨부와 AI 요약의 저장·오류 처리", async (t) => {
       }
       assert.equal((await imports.POST(upload(new TextEncoder().encode("fake")))).status, 415);
     });
-    await t.test("기존 10MB를 넘는 PDF와 정확히 50MB인 PDF의 업로드·추출을 허용", async () => {
-      assert.equal(PDF_LIMITS.maxBytes, 50 * 1024 * 1024);
-      for (const byteLength of [11 * 1024 * 1024, PDF_LIMITS.maxBytes]) {
+    await t.test("기존 50MiB를 넘는 PDF와 정확히 200MiB인 PDF의 업로드·추출을 허용", async () => {
+      assert.equal(PDF_LIMITS.maxBytes, 200 * 1024 * 1024);
+      for (const byteLength of [51 * 1024 * 1024, PDF_LIMITS.maxBytes]) {
         const content = makePdf(["Large PDF upload boundary test."], { title: basicInfo.title, byteLength });
         const parsed = await readPdfUpload(upload(content));
         assert.equal(parsed.content.byteLength, byteLength);
@@ -170,13 +170,13 @@ test("공개 PDF 첨부와 AI 요약의 저장·오류 처리", async (t) => {
         assert.match(extracted.pages[0].text, /Large PDF upload boundary test/);
       }
     });
-    await t.test("50MB를 한 바이트 넘거나 비어 있는 파일은 거부", async () => {
+    await t.test("200MiB를 한 바이트 넘거나 비어 있는 파일은 거부", async () => {
       for (const byteLength of [PDF_LIMITS.maxBytes + 1, 0]) {
         const content = new Uint8Array(byteLength);
         if (byteLength) content.set(new TextEncoder().encode("%PDF-"));
         const response = await imports.POST(upload(content));
         assert.equal(response.status, 413);
-        assert.match((await response.json() as { error: string }).error, /50MB/);
+        assert.match((await response.json() as { error: string }).error, /200MB/);
       }
       assert.equal(db.prepare("SELECT count(*) AS count FROM papers").get()?.count, 0);
     });
@@ -185,7 +185,7 @@ test("공개 PDF 첨부와 AI 요약의 저장·오류 처리", async (t) => {
       req.headers.set("content-length", String(PDF_LIMITS.maxBytes + 70 * 1024));
       const response = await imports.POST(req);
       assert.equal(response.status, 413);
-      assert.match((await response.json() as { error: string }).error, /50MB/);
+      assert.match((await response.json() as { error: string }).error, /200MB/);
       assert.equal(req.bodyUsed, false);
       assert.equal(db.prepare("SELECT count(*) AS count FROM papers").get()?.count, 0);
     });
@@ -197,7 +197,7 @@ test("공개 PDF 첨부와 AI 요약의 저장·오류 처리", async (t) => {
       assert.equal(req.headers.get("content-length"), null);
       const response = await imports.POST(req);
       assert.equal(response.status, 413);
-      assert.match((await response.json() as { error: string }).error, /50MB/);
+      assert.match((await response.json() as { error: string }).error, /200MB/);
       assert.equal(db.prepare("SELECT count(*) AS count FROM papers").get()?.count, 0);
     });
     await t.test("API 키와 외부 호출 없이 추출한 기본정보를 등록하고 교체 시 기존 내용을 보존", async (s) => {

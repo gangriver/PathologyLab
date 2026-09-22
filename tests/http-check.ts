@@ -89,7 +89,7 @@ async function main() {
       { text: "Synthetic HTTP test paper with a research question, a held-out evaluation dataset, and an accuracy result. This text is for testing only.", fontSize: 12, y: 675 },
     ] });
     const body = new FormData(); body.set("file", new File([new Uint8Array(bytes)], "HTTP 검증.pdf", { type: "application/pdf" }));
-    const imported = await fetch(base + "/api/papers/import", { method: "POST", headers: { origin: base }, body, signal: AbortSignal.timeout(30000) });
+    const imported = await fetch(base + "/api/papers/import", { method: "POST", headers: { origin: base }, body, signal: AbortSignal.timeout(120000) });
     const importedText = await imported.text();
     assert.equal(imported.status, 201, importedText + logs);
     const { id } = JSON.parse(importedText) as { id: string };

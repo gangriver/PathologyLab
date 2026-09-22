@@ -19,8 +19,11 @@ test("R2 직접 업로드의 서명과 파일 검증", async t => {
     return new Request("http://lab.test/api/papers/uploads", { method: "POST", headers: { "content-type": "application/json", origin }, body: JSON.stringify(body) });
   }
   try {
-    await t.test("업로드 URL은 정확한 파일 크기·형식과 10분 만료를 서명", async () => {
-      const ticket = await createUploadTicket({ filename: "연구.pdf", byteLength: content.byteLength });
+    await t.test("정확히 200MiB의 업로드 URL은 파일 크기·형식과 10분 만료를 서명", async () => {
+      assert.equal(PDF_LIMITS.maxBytes, 200 * 1024 * 1024);
+      const ticket = await createUploadTicket({ filename: "연구.pdf", byteLength: PDF_LIMITS.maxBytes });
+      const metadata = JSON.parse(Buffer.from(ticket.uploadToken.split(".")[0], "base64url").toString("utf8")) as { byteLength: number };
+      assert.equal(metadata.byteLength, 200 * 1024 * 1024);
       const url = new URL(ticket.uploadUrl);
       assert.equal(url.hostname, `${"a".repeat(32)}.r2.cloudflarestorage.com`);
       assert.match(url.pathname, /^\/test-papers\/staging\/[0-9a-f-]+\.pdf$/);
@@ -73,7 +76,7 @@ test("R2 직접 업로드의 서명과 파일 검증", async t => {
       fetch.mock.mockImplementation(async () => new Response(new Uint8Array(content.byteLength)));
       await assert.rejects(readCloudPdfUpload(request({ uploadToken: ticket.uploadToken })), { status: 415 });
     });
-    await t.test("길이 헤더가 작아도 응답 본문이 50MiB를 넘으면 읽기를 중단", async st => {
+    await t.test("길이 헤더가 작아도 응답 본문이 200MiB를 넘으면 읽기를 중단", async st => {
       let cancelled = false;
       const body = new ReadableStream<Uint8Array>({
         start(controller) { controller.enqueue(new Uint8Array(PDF_LIMITS.maxBytes + 1)); },
@@ -116,6 +119,7 @@ test("R2 직접 업로드의 서명과 파일 검증", async t => {
       assert.equal((await POST(request({ filename: "paper.pdf", byteLength: 5 }))).status, 404);
       process.env.CLOUD_STORAGE = "1";
       assert.equal((await POST(request({ filename: "paper.pdf", byteLength: 5 }, "https://outside.test"))).status, 403);
+      assert.equal((await POST(request({ filename: "paper.pdf", byteLength: PDF_LIMITS.maxBytes }))).status, 201);
       assert.equal((await POST(request({ filename: "paper.pdf", byteLength: PDF_LIMITS.maxBytes + 1 }))).status, 422);
     });
   } finally {

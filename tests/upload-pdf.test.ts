@@ -56,15 +56,18 @@ test("로컬 PDF 업로드는 기존 multipart 요청 한 번과 파일·버전�
   assertSignal(calls[0]);
 });
 
-test("클라우드 PDF 등록은 한글 파일명과 빈 MIME을 허용하며 세 단계로 전송", async t => {
+test("200MiB 클라우드 PDF 등록은 한글 파일명과 빈 MIME을 허용하며 세 단계로 전송", async t => {
   const expected = Response.json({ id: "cloud-paper" }, { status: 201 });
   const calls = mockFetch(t, [preparationResponse(), new Response(null, { status: 200 }), expected]);
   const file = new File(["%PDF-1.7\n검증"], "병리 연구 논문.pdf");
+  // 네트워크를 모의하므로 실제 대형 버퍼 없이 파일 크기 경계와 전송 경로를 확인합니다.
+  Object.defineProperty(file, "size", { value: PDF_LIMITS.maxBytes });
   const form = formWithFile(file);
   assert.equal(await uploadPdf(importUrl, form, true), expected);
   assert.deepEqual(calls.map(call => call.input), ["/api/papers/uploads", uploadUrl, importUrl]);
   assert.deepEqual(calls.map(call => call.init?.method), ["POST", "PUT", "POST"]);
   assert.deepEqual(readJsonBody(calls[0]), { filename: file.name, byteLength: file.size });
+  assert.equal(file.size, 200 * 1024 * 1024);
   assert.deepEqual(readJsonBody(calls[2]), { uploadToken });
   assert.equal(new Headers(calls[0].init?.headers).get("content-type"), "application/json");
   assert.equal(new Headers(calls[2].init?.headers).get("content-type"), "application/json");
@@ -88,12 +91,14 @@ test("클라우드 PDF 교체는 최종 요청에 정수 revision을 전달", as
   assert.deepEqual(readJsonBody(calls[2]), { uploadToken, revision: 12 });
 });
 
-test("파일 누락·빈 파일·50MB 초과·잘못된 형식은 네트워크 요청 전에 거부", async t => {
+test("파일 누락·빈 파일·200MiB 초과·잘못된 형식은 네트워크 요청 전에 거부", async t => {
   const calls = mockFetch(t, []);
+  const oversized = new File(["%PDF-1.7"], "large.pdf");
+  Object.defineProperty(oversized, "size", { value: PDF_LIMITS.maxBytes + 1 });
   const cases: [FormData, number][] = [
     [new FormData(), 400],
     [formWithFile(new File([], "empty.pdf")), 413],
-    [formWithFile(new File([new Uint8Array(PDF_LIMITS.maxBytes + 1)], "large.pdf")), 413],
+    [formWithFile(oversized), 413],
     [formWithFile(new File(["text"], "notes.txt", { type: "application/pdf" })), 415],
     [formWithFile(new File(["text"], "notes.pdf", { type: "text/plain" })), 415],
   ];

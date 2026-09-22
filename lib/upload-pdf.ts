@@ -3,7 +3,7 @@ import { PDF_LIMITS } from "./document-types";
 
 export async function uploadPdf(url: string, form: FormData, cloudStorage: boolean): Promise<Response> {
   if (!cloudStorage) {
-    return fetch(url, { method: "POST", body: form, signal: AbortSignal.timeout(PDF_LIMITS.uploadTimeoutMs) });
+    return fetch(url, { method: "POST", body: form, signal: AbortSignal.timeout(PDF_LIMITS.fileTransferTimeoutMs) });
   }
 
   const file = form.get("file");
@@ -33,7 +33,7 @@ export async function uploadPdf(url: string, form: FormData, cloudStorage: boole
     body: file,
     credentials: "omit",
     redirect: "error",
-    signal: AbortSignal.timeout(PDF_LIMITS.uploadTimeoutMs),
+    signal: AbortSignal.timeout(PDF_LIMITS.fileTransferTimeoutMs),
   });
   await uploaded.body?.cancel();
   if (!uploaded.ok) return Response.json({ error: "PDF 파일을 업로드하지 못했습니다. 다시 시도해주세요." }, { status: 502 });
