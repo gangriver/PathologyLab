@@ -9,8 +9,8 @@ const siteCopy = {
       archiveEyebrow: "누구나 함께하는 연구 기록",
     },
     home: {
-      heading: ["우리 연구실을", "함께 만드는 사람들"],
-      introduction: ["각자의 분야에서 깊이 있게.", "함께하는 자리에서 더 넓게.", "우리 연구실의 멤버를 소개합니다."],
+      heading: ["Spatial-Omics Lab을", "함께 만드는 사람들"],
+      introduction: ["각자의 분야에서 깊이 있게.", "함께하는 자리에서 더 넓게.", "Spatial-Omics Lab의 멤버를 소개합니다."],
       members: "연구실 멤버",
       memberCount: (count: number) => `함께하는 ${count}명`,
       facultyTitle: "교수님",
