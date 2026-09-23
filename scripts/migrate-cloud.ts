@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { backup, DatabaseSync } from "node:sqlite";
+import { isDeepStrictEqual } from "node:util";
 import { ApiError } from "../lib/api";
 import { PDF_LIMITS, type PaperDocumentInfo } from "../lib/document-types";
 import { getPdf, putPdf } from "../lib/r2";
@@ -20,7 +21,7 @@ function sameRecord(expected: object, actual: object): boolean {
       return typeof value === "string" && typeof record[key] === "string"
         && Number.isFinite(Date.parse(value)) && Date.parse(value) === Date.parse(record[key]);
     }
-    return value === record[key];
+    return isDeepStrictEqual(value, record[key]);
   });
 }
 
@@ -69,8 +70,11 @@ async function checkStoredPdf(document: DocumentRow, content: Uint8Array): Promi
 
 async function migrate(database: DatabaseSync) {
   const hasSubtitle = database.prepare("PRAGMA table_info(papers)").all().some(column => column.name === "subtitle");
-  const papers = database.prepare(`SELECT id, title, ${hasSubtitle ? "subtitle" : "'' AS subtitle"}, authors, url, researchQuestion, methods, findings,
-    limitations, meetingDate, presenter, status, creatorName, createdAt, updatedAt, revision FROM papers`).all() as unknown as Paper[];
+  const hasReferenceLinks = database.prepare("PRAGMA table_info(papers)").all().some(column => column.name === "referenceLinks");
+  const papers = database.prepare(`SELECT id, title, ${hasSubtitle ? "subtitle" : "'' AS subtitle"}, authors, url,
+    ${hasReferenceLinks ? "referenceLinks" : "'[]' AS referenceLinks"}, researchQuestion, methods, findings,
+    limitations, meetingDate, presenter, status, creatorName, createdAt, updatedAt, revision FROM papers`).all()
+    .map(row => ({ ...row, referenceLinks: JSON.parse(String(row.referenceLinks)) as Paper["referenceLinks"] })) as unknown as Paper[];
   const comments = database.prepare("SELECT id, paperId, authorName, content, createdAt FROM comments").all() as unknown as Comment[];
   const documents = (database.prepare(`SELECT id, paperId, filename, byteLength, pagesJson,
     pageCount, textCharacters, uploadedAt FROM paper_documents`).all() as unknown as Omit<DocumentRow, "storageKey">[])

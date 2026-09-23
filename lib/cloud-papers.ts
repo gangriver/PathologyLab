@@ -4,7 +4,7 @@ import { supabaseRequest } from "./supabase";
 import type { Comment, Paper } from "./types";
 import type { PaperInput, PaperUpdateInput } from "./validation";
 
-const paperColumns = "id,title,subtitle,authors,url,researchQuestion,methods,findings,limitations,meetingDate,presenter,status,creatorName,createdAt,updatedAt,revision";
+const paperColumns = "id,title,subtitle,authors,url,referenceLinks,researchQuestion,methods,findings,limitations,meetingDate,presenter,status,creatorName,createdAt,updatedAt,revision";
 
 export async function listPapers(): Promise<Paper[]> {
   return supabaseRequest<Paper[]>("papers", { query: { select: paperColumns, order: "meetingDate.desc,createdAt.desc" } });
@@ -18,7 +18,7 @@ export async function createPaper(input: PaperInput): Promise<{ id: string }> {
   const now = new Date().toISOString();
   await supabaseRequest<void>("papers", {
     method: "POST", prefer: "return=minimal", body: {
-      id, title: input.title, subtitle: input.subtitle, authors: input.authors, url: input.url, researchQuestion: input.researchQuestion,
+      id, title: input.title, subtitle: input.subtitle, authors: input.authors, url: input.url, referenceLinks: input.referenceLinks, researchQuestion: input.researchQuestion,
       methods: input.methods, findings: input.findings, limitations: input.limitations, meetingDate: input.meetingDate,
       presenter: input.presenter, status: input.status, createdAt: now, updatedAt: now,
     },

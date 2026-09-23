@@ -13,6 +13,8 @@ const messages: ReadonlyArray<readonly [string, string]> = [
   ["논문 제목을 입력해주세요.", "Please enter the paper title."],
   ["올바른 발표일을 입력해주세요.", "Please enter a valid presentation date."],
   ["http 또는 https 원문 링크를 입력해주세요.", "Please enter an http or https link to the original paper."],
+  ["참고 링크의 이름과 URL을 모두 입력해주세요.", "Please enter both a name and a URL for each reference link."],
+  ["http 또는 https 참고 링크를 입력해주세요.", "Please enter an http or https reference link without sign-in credentials."],
   ["토론 내용을 입력해주세요.", "Please enter a discussion comment."],
   ["논문 버전을 확인해주세요.", "Please check the paper version."],
   ["논문이 변경되었습니다. 새로고침 후 다시 시도해주세요.", "The paper has changed. Refresh the page and try again."],
@@ -73,6 +75,9 @@ const messages: ReadonlyArray<readonly [string, string]> = [
 export function translateError(message: string, locale: Locale): string {
   const translated = messages.find(([ko, en]) => message === ko || message === en);
   if (translated) return translated[locale === "ko" ? 0 : 1];
+
+  const linkCount = message.match(/^참고 링크는 (\d+)개까지 추가할 수 있습니다\.$/) ?? message.match(/^You can add up to (\d+) reference links\.$/);
+  if (linkCount) return locale === "ko" ? `참고 링크는 ${linkCount[1]}개까지 추가할 수 있습니다.` : `You can add up to ${linkCount[1]} reference links.`;
 
   const uploadSize = message.match(/^PDF는 ([\d.]+)MB 이하로 업로드해주세요\.$/) ?? message.match(/^Please upload a PDF no larger than ([\d.]+)MB\.$/);
   if (uploadSize) return locale === "ko" ? `PDF는 ${uploadSize[1]}MB 이하로 업로드해주세요.` : `Please upload a PDF no larger than ${uploadSize[1]}MB.`;

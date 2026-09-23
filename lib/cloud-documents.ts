@@ -20,7 +20,7 @@ export async function getStoredDocument(paperId: string): Promise<StoredDocument
 export async function importStoredPaper(document: StoredDocument, extracted: ExtractedPdf): Promise<{ id: string }> {
   const input: PaperInput = {
     title: extracted.basicInfo.title || document.filename.replace(/\.pdf$/i, "") || "새 논문",
-    subtitle: "", authors: extracted.basicInfo.authors, url: extracted.basicInfo.url, researchQuestion: "", methods: "", findings: "", limitations: "",
+    subtitle: "", authors: extracted.basicInfo.authors, url: extracted.basicInfo.url, referenceLinks: [], researchQuestion: "", methods: "", findings: "", limitations: "",
     meetingDate: "", presenter: "", status: "planned",
   };
   return supabaseRequest("rpc/lab_import_paper", { method: "POST", body: { p_input: input, p_document: document } });

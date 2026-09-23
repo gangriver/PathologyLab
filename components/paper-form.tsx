@@ -1,13 +1,13 @@
 "use client";
 import Link from "next/link";
 import { usePaperForm } from "@/hooks/use-paper-form";
-import { getPaperStatuses, PAPER_SUBTITLE_MAX_LENGTH, type Paper } from "@/lib/types";
+import { getPaperStatuses, PAPER_SUBTITLE_MAX_LENGTH, REFERENCE_LINK_LIMITS, type Paper } from "@/lib/types";
 import { getPaperSections } from "@/lib/paper-sections";
 import { PDF_LIMITS, type PaperDocumentInfo } from "@/lib/document-types";
 import { SummaryDraft } from "./summary-draft";
 
 export function PaperForm({ paper, defaultPresenter, cloudStorage, document, summaryConfigured = false, onPendingChange }: { paper?: Paper; defaultPresenter: string; cloudStorage: boolean; document?: PaperDocumentInfo; summaryConfigured?: boolean; onPendingChange?: (pending: boolean) => void }) {
-  const { locale, text, values, setField, pending, error, notice, operation, submit, attachment, draft, upload, removeDocument, summarize, applyDraft } = usePaperForm(defaultPresenter, cloudStorage, paper, document, onPendingChange);
+  const { locale, text, values, setField, addReferenceLink, updateReferenceLink, removeReferenceLink, pending, error, notice, operation, submit, attachment, draft, upload, removeDocument, summarize, applyDraft } = usePaperForm(defaultPresenter, cloudStorage, paper, document, onPendingChange);
   return <form className="panel" onSubmit={submit}>
     {paper && <section className="document-panel">
       <h2>{text.documentHeading}</h2>
@@ -29,6 +29,19 @@ export function PaperForm({ paper, defaultPresenter, cloudStorage, document, sum
       <label className="field">{text.title} <span className="muted">{text.required}</span><input name="title" required maxLength={500} value={values.title} onChange={event => setField("title", event.target.value)} placeholder={text.titlePlaceholder} /></label>
       <label className="field">{text.subtitle} <span className="muted">{text.optional}</span><input name="subtitle" maxLength={PAPER_SUBTITLE_MAX_LENGTH} value={values.subtitle} onChange={event => setField("subtitle", event.target.value)} placeholder={text.subtitlePlaceholder} /></label>
       <div className="form-grid"><label className="field">{text.authors}<input name="authors" maxLength={500} value={values.authors} onChange={event => setField("authors", event.target.value)} placeholder={text.authorsPlaceholder} /></label><label className="field">{text.sourceLink}<input type="url" name="url" maxLength={2000} value={values.url} onChange={event => setField("url", event.target.value)} placeholder="https://" /></label></div>
+      <section className="reference-links-editor" aria-labelledby="reference-links-heading">
+        <h2 id="reference-links-heading">{text.referenceLinks} <span className="muted">{text.optional}</span></h2>
+        <p className="muted">{text.referenceLinksHelp}</p>
+        {values.referenceLinks.map((link, index) => <div className="reference-link-row" key={index}>
+          <div className="form-grid">
+            <label className="field">{text.referenceLinkName}<input name={`referenceLinks[${index}].label`} maxLength={REFERENCE_LINK_LIMITS.maxLabelLength} required={Boolean(link.url.trim())} value={link.label} onChange={event => updateReferenceLink(index, "label", event.target.value)} placeholder={text.referenceLinkPlaceholder} /></label>
+            <label className="field">{text.referenceLinkUrl}<input type="url" name={`referenceLinks[${index}].url`} maxLength={REFERENCE_LINK_LIMITS.maxUrlLength} required={Boolean(link.label.trim())} value={link.url} onChange={event => updateReferenceLink(index, "url", event.target.value)} placeholder="https://" /></label>
+          </div>
+          <button type="button" className="text-button" aria-label={text.removeReferenceLink(index + 1)} onClick={() => removeReferenceLink(index)}>{text.delete}</button>
+        </div>)}
+        <button type="button" className="button button-secondary button-small" onClick={addReferenceLink} disabled={values.referenceLinks.length >= REFERENCE_LINK_LIMITS.maxCount}>{text.addReferenceLink}</button>
+        {values.referenceLinks.length >= REFERENCE_LINK_LIMITS.maxCount && <p className="muted" role="status">{text.referenceLinksLimit(REFERENCE_LINK_LIMITS.maxCount)}</p>}
+      </section>
       <div className="form-grid"><label className="field">{text.presentationDate}<input type="date" name="meetingDate" value={values.meetingDate} onChange={event => setField("meetingDate", event.target.value)} /></label><label className="field">{text.presenter}<input name="presenter" maxLength={100} value={values.presenter} onChange={event => setField("presenter", event.target.value)} /></label></div>
       <label className="field">{text.presentationStatus}<select name="status" value={values.status} onChange={event => setField("status", event.target.value as Paper["status"])}>{Object.entries(getPaperStatuses(locale)).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       {getPaperSections(locale).map(({ key, label, placeholder }) => <label className="field" key={key}>{label}<textarea name={key} rows={5} maxLength={12000} value={values[key]} onChange={event => setField(key, event.target.value)} placeholder={placeholder} /></label>)}

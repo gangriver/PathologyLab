@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS public.papers (
   subtitle TEXT NOT NULL DEFAULT '',
   authors TEXT NOT NULL DEFAULT '',
   url TEXT NOT NULL DEFAULT '',
+  "referenceLinks" JSONB NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof("referenceLinks") = 'array'),
   "researchQuestion" TEXT NOT NULL DEFAULT '',
   methods TEXT NOT NULL DEFAULT '',
   findings TEXT NOT NULL DEFAULT '',
@@ -21,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.papers (
 );
 
 ALTER TABLE public.papers ADD COLUMN IF NOT EXISTS subtitle TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.papers ADD COLUMN IF NOT EXISTS "referenceLinks" JSONB NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof("referenceLinks") = 'array');
 
 CREATE TABLE IF NOT EXISTS public.comments (
   id TEXT PRIMARY KEY,
@@ -82,6 +84,7 @@ BEGIN
   UPDATE public.papers SET
     title = p_input->>'title', subtitle = COALESCE(p_input->>'subtitle', subtitle),
     authors = p_input->>'authors', url = p_input->>'url',
+    "referenceLinks" = COALESCE(p_input->'referenceLinks', "referenceLinks"),
     "researchQuestion" = p_input->>'researchQuestion', methods = p_input->>'methods',
     findings = p_input->>'findings', limitations = p_input->>'limitations',
     "meetingDate" = p_input->>'meetingDate', presenter = p_input->>'presenter', status = p_input->>'status',
@@ -123,10 +126,11 @@ DECLARE
 BEGIN
   document := jsonb_populate_record(NULL::public.paper_documents, p_document);
   INSERT INTO public.papers (
-    id, title, authors, url, "researchQuestion", methods, findings, limitations,
+    id, title, subtitle, authors, url, "referenceLinks", "researchQuestion", methods, findings, limitations,
     "meetingDate", presenter, status, "createdAt", "updatedAt"
   ) VALUES (
-    document."paperId", p_input->>'title', p_input->>'authors', p_input->>'url', p_input->>'researchQuestion',
+    document."paperId", p_input->>'title', COALESCE(p_input->>'subtitle', ''), p_input->>'authors', p_input->>'url',
+    COALESCE(p_input->'referenceLinks', '[]'::jsonb), p_input->>'researchQuestion',
     p_input->>'methods', p_input->>'findings', p_input->>'limitations', p_input->>'meetingDate',
     p_input->>'presenter', p_input->>'status', created_time, created_time
   );

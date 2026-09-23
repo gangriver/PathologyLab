@@ -19,7 +19,7 @@ test("클라우드 논문 API와 PDF 저장 경로의 연결", async t => {
   process.env.R2_SECRET_ACCESS_KEY = "test-secret-key";
   const fixture = makePdf(["We evaluated cell classification using an independent validation set."], { title: "Cloud Pathology Study", author: "Test Researcher" });
   const paper: Paper = {
-    id: "06a790f3-d963-45b8-8720-5bcb2b7f2275", title: "기존 논문", subtitle: "PICASSO", authors: "기존 저자", url: "",
+    id: "06a790f3-d963-45b8-8720-5bcb2b7f2275", title: "기존 논문", subtitle: "PICASSO", authors: "기존 저자", url: "", referenceLinks: [],
     researchQuestion: "", methods: "", findings: "", limitations: "", meetingDate: "", presenter: "발표자", status: "planned",
     creatorName: "방문자", createdAt: "2026-09-18T00:00:00.000Z", updatedAt: "2026-09-18T00:00:00.000Z", revision: 1,
   };

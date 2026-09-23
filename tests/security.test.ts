@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { REFERENCE_LINK_LIMITS, type PaperReferenceLink } from "../lib/types";
 
 test("로그인 없는 논문·토론 저장과 변경 요청 검증", async (t) => {
   const testRoot = resolve("work");
@@ -39,11 +40,12 @@ test("로그인 없는 논문·토론 저장과 변경 요청 검증", async (t)
       assert.ok(id);
       const detail = await paperRoute.GET(request("/api/papers/" + id), context());
       assert.equal(detail.status, 200);
-      const saved = await detail.json() as { paper: { subtitle: string; creatorName: string; limitations: string } };
+      const saved = await detail.json() as { paper: { subtitle: string; referenceLinks: PaperReferenceLink[]; creatorName: string; limitations: string } };
       assert.ok(!("createdBy" in saved.paper));
       assert.equal(saved.paper.creatorName, "방문자");
       assert.equal(saved.paper.limitations, input.limitations);
       assert.equal(saved.paper.subtitle, "");
+      assert.deepEqual(saved.paper.referenceLinks, []);
       const secondConnection = new DatabaseSync(process.env.DATABASE_PATH!);
       try {
         assert.equal(secondConnection.prepare("SELECT title FROM papers WHERE id=?").get(id)?.title, input.title);
@@ -102,6 +104,68 @@ test("로그인 없는 논문·토론 저장과 변경 요청 검증", async (t)
         assert.equal((await comments.POST(request("/api/papers/" + id + "/comments", "POST", { content: "차단할 기록" }, origin), context())).status, 403);
       }
       assert.equal(db.prepare("SELECT revision FROM papers WHERE id=?").get(id)?.revision, 1);
+    });
+    await t.test("참고 링크는 공백·빈 행을 정리해 저장하고 누락 보존·빈 배열 삭제·동시 수정 방지를 지원", async () => {
+      const links = [{ label: "공식 GitHub", url: "https://github.com/lab/model?tab=readme#usage" }, { label: "관련 글", url: "https://example.org/read" }];
+      const created = await papers.POST(request("/api/papers", "POST", {
+        ...input, referenceLinks: [{ label: "  ", url: "  " }, ...links.map(link => ({ label: ` ${link.label} `, url: ` ${link.url} ` }))],
+      }));
+      assert.equal(created.status, 201);
+      const linkId = (await created.json() as { id: string }).id;
+      const linkContext = () => ({ params: Promise.resolve({ id: linkId }) });
+      async function savedPaper() {
+        const response = await paperRoute.GET(request("/api/papers/" + linkId), linkContext());
+        assert.equal(response.status, 200);
+        return (await response.json() as { paper: { referenceLinks: PaperReferenceLink[]; revision: number } }).paper;
+      }
+      try {
+        assert.deepEqual((await savedPaper()).referenceLinks, links);
+        const listed = await (await papers.GET()).json() as { id: string; referenceLinks: PaperReferenceLink[] }[];
+        assert.deepEqual(listed.find(paper => paper.id === linkId)?.referenceLinks, links);
+        assert.equal(db.prepare("SELECT referenceLinks FROM papers WHERE id=?").get(linkId)?.referenceLinks, JSON.stringify(links));
+        assert.equal((await paperRoute.PATCH(request("/api/papers/" + linkId, "PATCH", { ...input, revision: 1 }), linkContext())).status, 200);
+        assert.deepEqual((await savedPaper()).referenceLinks, links);
+        const concurrent = await Promise.all([
+          paperRoute.PATCH(request("/api/papers/" + linkId, "PATCH", { ...input, referenceLinks: [links[0]], revision: 2 }), linkContext()),
+          paperRoute.PATCH(request("/api/papers/" + linkId, "PATCH", { ...input, referenceLinks: [links[1]], revision: 2 }), linkContext()),
+        ]);
+        assert.deepEqual(concurrent.map(response => response.status).sort(), [200, 409]);
+        assert.equal((await savedPaper()).revision, 3);
+        assert.equal((await savedPaper()).referenceLinks.length, 1);
+        assert.equal((await paperRoute.PATCH(request("/api/papers/" + linkId, "PATCH", { ...input, referenceLinks: [], revision: 3 }), linkContext())).status, 200);
+        assert.deepEqual((await savedPaper()).referenceLinks, []);
+        const maxUrl = "https://example.org/" + "x".repeat(REFERENCE_LINK_LIMITS.maxUrlLength - "https://example.org/".length);
+        const maxLinks = Array.from({ length: REFERENCE_LINK_LIMITS.maxCount }, () => ({ label: "가".repeat(REFERENCE_LINK_LIMITS.maxLabelLength), url: maxUrl }));
+        assert.equal((await paperRoute.PATCH(request("/api/papers/" + linkId, "PATCH", { ...input, referenceLinks: maxLinks, revision: 4 }), linkContext())).status, 200);
+        assert.deepEqual((await savedPaper()).referenceLinks, maxLinks);
+      } finally { db.prepare("DELETE FROM papers WHERE id=?").run(linkId); }
+    });
+    await t.test("참고 링크의 잘못된 타입·부분 입력·위험한 URL·개수와 길이 초과를 저장 전에 한영 오류로 거부", async () => {
+      const validLink = { label: "GitHub", url: "https://github.com/lab/model" };
+      const invalidCases: [unknown, string, string][] = [
+        ...[null, "https://github.com/lab/model", {}, [null], [{ label: 1, url: validLink.url }], [{ label: "GitHub", url: [] }]].map(value => [value, "입력 내용을 확인해주세요.", "Please check your input."] as [unknown, string, string]),
+        [[{ label: "GitHub", url: " " }], "참고 링크의 이름과 URL을 모두 입력해주세요.", "Please enter both a name and a URL for each reference link."],
+        [[{ label: " ", url: validLink.url }], "참고 링크의 이름과 URL을 모두 입력해주세요.", "Please enter both a name and a URL for each reference link."],
+        ...["javascript:alert(1)", "data:text/html,hello", "ftp://example.org/file", "//example.org", "https://user:password@example.org", "https://user@example.org", "not-a-url"].map(url => [[{ label: "링크", url }], "http 또는 https 참고 링크를 입력해주세요.", "Please enter an http or https reference link without sign-in credentials."] as [unknown, string, string]),
+        [Array.from({ length: REFERENCE_LINK_LIMITS.maxCount + 1 }, () => validLink), `참고 링크는 ${REFERENCE_LINK_LIMITS.maxCount}개까지 추가할 수 있습니다.`, `You can add up to ${REFERENCE_LINK_LIMITS.maxCount} reference links.`],
+        [[{ ...validLink, label: "가".repeat(REFERENCE_LINK_LIMITS.maxLabelLength + 1) }], `${REFERENCE_LINK_LIMITS.maxLabelLength}자 이내로 작성해주세요.`, `Use no more than ${REFERENCE_LINK_LIMITS.maxLabelLength} characters.`],
+        [[{ ...validLink, url: validLink.url + "x".repeat(REFERENCE_LINK_LIMITS.maxUrlLength) }], `${REFERENCE_LINK_LIMITS.maxUrlLength}자 이내로 작성해주세요.`, `Use no more than ${REFERENCE_LINK_LIMITS.maxUrlLength} characters.`],
+      ];
+      const before = { ...db.prepare("SELECT referenceLinks,revision FROM papers WHERE id=?").get(id) };
+      const beforeCount = db.prepare("SELECT count(*) AS count FROM papers").get()?.count;
+      for (const [referenceLinks, ko, en] of invalidCases) {
+        for (const [locale, expected] of [["ko", ko], ["en", en]]) {
+          for (const method of ["POST", "PATCH"]) {
+            const req = request("/api/papers/" + id, method, { ...input, referenceLinks, revision: 1 });
+            req.headers.set("cookie", `lab-locale=${locale}`);
+            const response = method === "POST" ? await papers.POST(req) : await paperRoute.PATCH(req, context());
+            assert.equal(response.status, 422);
+            assert.equal((await response.json() as { error: string }).error, expected);
+          }
+        }
+      }
+      assert.equal(db.prepare("SELECT count(*) AS count FROM papers").get()?.count, beforeCount);
+      assert.deepEqual({ ...db.prepare("SELECT referenceLinks,revision FROM papers WHERE id=?").get(id) }, before);
     });
     await t.test("빈 제목, 잘못된 날짜, 실행 가능한 URL, 과도한 내용과 잘못된 JSON 거부", async () => {
       for (const patch of [{ title: "" }, { meetingDate: "2026-99-99" }, { meetingDate: "2026-02-30" }, { url: "javascript:alert(1)" }, { findings: "x".repeat(12001) }]) {

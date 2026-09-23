@@ -4,25 +4,28 @@ import { ApiError } from "./api";
 import type { Paper, Comment } from "./types";
 import type { PaperInput, PaperUpdateInput } from "./validation";
 
-const paperSelect = "SELECT id,title,subtitle,authors,url,researchQuestion,methods,findings,limitations,meetingDate,presenter,status,creatorName,createdAt,updatedAt,revision FROM papers";
+const paperSelect = "SELECT id,title,subtitle,authors,url,referenceLinks,researchQuestion,methods,findings,limitations,meetingDate,presenter,status,creatorName,createdAt,updatedAt,revision FROM papers";
+function readPaper(row: Record<string, unknown>): Paper {
+  return { ...row, referenceLinks: JSON.parse(String(row.referenceLinks)) as Paper["referenceLinks"] } as Paper;
+}
 export function listPapers(): Paper[] {
-  return db.prepare(paperSelect + " ORDER BY meetingDate DESC, createdAt DESC").all().map(row => ({ ...row })) as unknown as Paper[];
+  return db.prepare(paperSelect + " ORDER BY meetingDate DESC, createdAt DESC").all().map(readPaper);
 }
 export function findPaper(id: string): Paper | undefined {
   const row = db.prepare(paperSelect + " WHERE id = ?").get(id);
-  return row ? { ...row } as Paper : undefined;
+  return row ? readPaper(row) : undefined;
 }
 export function createPaper(input: PaperInput) {
   const id = randomUUID();
   const now = new Date().toISOString();
-  db.prepare(`INSERT INTO papers (id,title,subtitle,authors,url,researchQuestion,methods,findings,limitations,meetingDate,presenter,status,createdAt,updatedAt)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,input.title,input.subtitle,input.authors,input.url,input.researchQuestion,input.methods,input.findings,input.limitations,input.meetingDate,input.presenter,input.status,now,now);
+  db.prepare(`INSERT INTO papers (id,title,subtitle,authors,url,referenceLinks,researchQuestion,methods,findings,limitations,meetingDate,presenter,status,createdAt,updatedAt)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,input.title,input.subtitle,input.authors,input.url,JSON.stringify(input.referenceLinks),input.researchQuestion,input.methods,input.findings,input.limitations,input.meetingDate,input.presenter,input.status,now,now);
   return { id };
 }
 export function editPaper(id: string, input: PaperUpdateInput, revision: number) {
   assertPaperExists(id);
-  const result = db.prepare(`UPDATE papers SET title=?,subtitle=COALESCE(?,subtitle),authors=?,url=?,researchQuestion=?,methods=?,findings=?,limitations=?,meetingDate=?,presenter=?,status=?,updatedAt=?,revision=revision+1 WHERE id=? AND revision=?`)
-    .run(input.title,input.subtitle ?? null,input.authors,input.url,input.researchQuestion,input.methods,input.findings,input.limitations,input.meetingDate,input.presenter,input.status,new Date().toISOString(),id,revision);
+  const result = db.prepare(`UPDATE papers SET title=?,subtitle=COALESCE(?,subtitle),authors=?,url=?,referenceLinks=COALESCE(?,referenceLinks),researchQuestion=?,methods=?,findings=?,limitations=?,meetingDate=?,presenter=?,status=?,updatedAt=?,revision=revision+1 WHERE id=? AND revision=?`)
+    .run(input.title,input.subtitle ?? null,input.authors,input.url,input.referenceLinks === undefined ? null : JSON.stringify(input.referenceLinks),input.researchQuestion,input.methods,input.findings,input.limitations,input.meetingDate,input.presenter,input.status,new Date().toISOString(),id,revision);
   if (!result.changes) throw new ApiError(409, "다른 곳에서 논문이 변경되었습니다. 새로고침 후 다시 확인해주세요.");
   return { id };
 }

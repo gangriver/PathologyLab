@@ -76,7 +76,7 @@ test("기존 작성자 이름, 모든 논문 값, 토론과 원본 PDF를 보존
     setupDatabase(database);
     setupDatabase(database);
     assert.equal(needsPublicMigration(database), false);
-    assert.deepEqual({ ...database.prepare("SELECT * FROM papers").get() }, { ...originalPaper, subtitle: "", creatorName: "기존 작성자" });
+    assert.deepEqual({ ...database.prepare("SELECT * FROM papers").get() }, { ...originalPaper, subtitle: "", referenceLinks: "[]", creatorName: "기존 작성자" });
     assert.deepEqual({ ...database.prepare("SELECT * FROM comments").get() }, { ...originalComment, authorName: "기존 작성자" });
     assert.deepEqual({ ...database.prepare("SELECT * FROM paper_documents").get() }, originalDocument);
     assert.deepEqual({ ...database.prepare("SELECT * FROM user").get() }, originalUser);
@@ -125,6 +125,30 @@ test("PDF 기능 도입 전 데이터베이스도 기존 논문을 보존하며 
     assert.equal(database.prepare("SELECT title FROM papers").get()?.title, "기존 논문");
     assert.equal(database.prepare("SELECT count(*) AS count FROM paper_documents").get()?.count, 0);
     assert.equal(needsPublicMigration(database), false);
+  } finally { database.close(); }
+});
+
+test("참고 링크가 없는 기존 DB는 빈 목록으로 변환하고 재실행 시 논문·토론·PDF와 저장된 링크를 보존한다", () => {
+  const database = createLegacyDatabase();
+  try {
+    setupDatabase(database);
+    database.exec("ALTER TABLE papers DROP COLUMN referenceLinks");
+    const paper = { ...database.prepare("SELECT * FROM papers").get() };
+    const comment = { ...database.prepare("SELECT * FROM comments").get() };
+    const document = { ...database.prepare("SELECT * FROM paper_documents").get() };
+    setupDatabase(database);
+    assert.deepEqual({ ...database.prepare("SELECT * FROM papers").get() }, { ...paper, referenceLinks: "[]" });
+    const referenceLinks = JSON.stringify([{ label: "공식 GitHub", url: "https://github.com/lab/model" }]);
+    database.prepare("UPDATE papers SET referenceLinks=? WHERE id=?").run(referenceLinks, "paper-1");
+    setupDatabase(database);
+    assert.deepEqual({ ...database.prepare("SELECT * FROM papers").get() }, { ...paper, referenceLinks });
+    assert.deepEqual({ ...database.prepare("SELECT * FROM comments").get() }, comment);
+    assert.deepEqual({ ...database.prepare("SELECT * FROM paper_documents").get() }, document);
+    assert.equal(database.prepare("PRAGMA table_info(papers)").all().filter(column => column.name === "referenceLinks").length, 1);
+    for (const invalid of ["not-json", "{}", "null"]) {
+      assert.throws(() => database.prepare("UPDATE papers SET referenceLinks=? WHERE id=?").run(invalid, "paper-1"));
+    }
+    assert.deepEqual(database.prepare("PRAGMA foreign_key_check").all(), []);
   } finally { database.close(); }
 });
 

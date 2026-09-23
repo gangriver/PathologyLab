@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS papers (
   id TEXT PRIMARY KEY, title TEXT NOT NULL, subtitle TEXT NOT NULL DEFAULT '', authors TEXT NOT NULL DEFAULT '', url TEXT NOT NULL DEFAULT '',
+  referenceLinks TEXT NOT NULL DEFAULT '[]' CHECK(json_valid(referenceLinks) AND json_type(referenceLinks) = 'array'),
   researchQuestion TEXT NOT NULL DEFAULT '', methods TEXT NOT NULL DEFAULT '', findings TEXT NOT NULL DEFAULT '',
   limitations TEXT NOT NULL DEFAULT '', meetingDate TEXT NOT NULL DEFAULT '', presenter TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL CHECK(status IN ('planned','discussed')) DEFAULT 'planned',

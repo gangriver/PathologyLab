@@ -19,7 +19,7 @@ test("클라우드 데이터 경계와 원자 변경 요청", async (t) => {
     return respond();
   });
   const input: PaperInput = {
-    title: "검증 논문", subtitle: "PICASSO", authors: "저자", url: "", researchQuestion: "", methods: "", findings: "", limitations: "",
+    title: "검증 논문", subtitle: "PICASSO", authors: "저자", url: "", referenceLinks: [{ label: "공식 GitHub", url: "https://github.com/lab/model" }], researchQuestion: "", methods: "", findings: "", limitations: "",
     meetingDate: "", presenter: "발표자", status: "planned",
   };
   const document: documents.StoredDocument = {
@@ -45,6 +45,7 @@ test("클라우드 데이터 경계와 원자 변경 요청", async (t) => {
       assert.ok(last().options.signal instanceof AbortSignal);
       assert.equal(last().url.searchParams.get("order"), "meetingDate.desc,createdAt.desc");
       assert.ok(last().url.searchParams.get("select")?.split(",").includes("subtitle"));
+      assert.ok(last().url.searchParams.get("select")?.split(",").includes("referenceLinks"));
     });
     await t.test("외부 호스트와 잘못된 키는 요청하기 전에 차단", async () => {
       const before = calls.length;
@@ -97,6 +98,7 @@ test("클라우드 데이터 경계와 원자 변경 요청", async (t) => {
       assert.match(result.id, /^[0-9a-f-]{36}$/);
       assert.equal(body.title, input.title);
       assert.equal(body.subtitle, input.subtitle);
+      assert.deepEqual(body.referenceLinks, input.referenceLinks);
       assert.equal(body.creatorName, undefined);
       assert.equal(body.revision, undefined);
     });
@@ -108,6 +110,20 @@ test("클라우드 데이터 경계와 원자 변경 요청", async (t) => {
       respond = async () => Response.json({ success: true, storageKey: document.storageKey });
       assert.deepEqual(await papers.removePaper("paper-id", 4), { success: true, storageKey: document.storageKey });
       assert.equal(last().url.pathname, "/rest/v1/rpc/lab_remove_paper");
+    });
+    await t.test("클라우드 참고 링크는 조회하고 수정 누락과 명시적 빈 배열을 구분하여 전달", async () => {
+      const record = { ...input, id: "paper-id", revision: 3 };
+      respond = async () => Response.json([record]);
+      assert.deepEqual((await papers.listPapers())[0].referenceLinks, input.referenceLinks);
+      assert.deepEqual((await papers.findPaper("paper-id"))?.referenceLinks, input.referenceLinks);
+      respond = async () => Response.json({ id: "paper-id" });
+      const { referenceLinks: omitted, ...withoutLinks } = input;
+      assert.ok(omitted.length);
+      await papers.editPaper("paper-id", withoutLinks, 3);
+      assert.ok(!("referenceLinks" in (lastBody().p_input as object)));
+      await papers.editPaper("paper-id", { ...input, referenceLinks: [] }, 4);
+      assert.deepEqual((lastBody().p_input as PaperInput).referenceLinks, []);
+      assert.equal(lastBody().p_revision, 4);
     });
     await t.test("공개 PDF 정보에는 저장 키와 추출 본문을 조회하지 않음", async () => {
       respond = async () => Response.json([]);
@@ -124,6 +140,7 @@ test("클라우드 데이터 경계와 원자 변경 요청", async (t) => {
       assert.equal(last().url.pathname, "/rest/v1/rpc/lab_import_paper");
       assert.equal((lastBody().p_input as PaperInput).title, extracted.basicInfo.title);
       assert.equal((lastBody().p_input as PaperInput).subtitle, "");
+      assert.deepEqual((lastBody().p_input as PaperInput).referenceLinks, []);
       assert.deepEqual(lastBody().p_document, document);
       respond = async () => Response.json({ revision: 2, previousStorageKey: "papers/old.pdf" });
       const result = await documents.replaceStoredDocument("paper-id", document, extracted, 1);

@@ -43,6 +43,7 @@ const siteCopy = {
       undecided: "미정",
       attachedPdf: (count: number) => `첨부 PDF · ${count}쪽`,
       readOriginal: "원문 읽기",
+      referenceLinks: "참고 링크",
       attachAndSummarize: "PDF 첨부·AI 요약",
     },
     editPaper: {
@@ -103,6 +104,7 @@ const siteCopy = {
       undecided: "To be decided",
       attachedPdf: (count: number) => `Attached PDF · ${count} ${count === 1 ? "page" : "pages"}`,
       readOriginal: "Read Original Paper",
+      referenceLinks: "Reference links",
       attachAndSummarize: "Attach PDF · AI Summary",
     },
     editPaper: {
