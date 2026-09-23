@@ -11,7 +11,7 @@
     "check:cloud": "tsx scripts/check-cloud.ts",
     "migrate:cloud": "tsx scripts/migrate-cloud.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/security.test.ts tests/pdf.test.ts tests/migration.test.ts tests/cloud-data.test.ts tests/cloud-upload.test.ts tests/cloud-routes.test.ts tests/upload-pdf.test.ts",
+    "test": "tsx --test tests/security.test.ts tests/pdf.test.ts tests/migration.test.ts tests/cloud-data.test.ts tests/cloud-upload.test.ts tests/cloud-routes.test.ts tests/upload-pdf.test.ts tests/github-links.test.ts tests/github-links-api.test.ts",
     "test:http": "tsx tests/http-check.ts"
   },
   "dependencies": {

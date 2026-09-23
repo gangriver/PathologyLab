@@ -2,13 +2,17 @@ import { randomUUID } from "node:crypto";
 import { db } from "./db";
 import { ApiError } from "./api";
 import { assertPaperExists, createPaper } from "./papers-local";
-import type { ExtractedPdf, PaperDocument, PaperDocumentInfo } from "./document-types";
+import type { ExtractedPdf, PaperDocument, PaperDocumentInfo, PaperDocumentText } from "./document-types";
 import type { PaperInput } from "./validation";
 
 const documentColumns = "id,paperId,filename,byteLength,pageCount,textCharacters,uploadedAt";
 export function getDocumentInfo(paperId: string): PaperDocumentInfo | undefined {
   const row = db.prepare("SELECT " + documentColumns + " FROM paper_documents WHERE paperId=?").get(paperId);
   return row ? { ...row } as PaperDocumentInfo : undefined;
+}
+export function getDocumentText(paperId: string): PaperDocumentText | undefined {
+  const row = db.prepare("SELECT id,pagesJson FROM paper_documents WHERE paperId=?").get(paperId);
+  return row ? { ...row } as PaperDocumentText : undefined;
 }
 export function getDocument(paperId: string): PaperDocument | undefined {
   return db.prepare("SELECT * FROM paper_documents WHERE paperId=?").get(paperId) as unknown as PaperDocument | undefined;

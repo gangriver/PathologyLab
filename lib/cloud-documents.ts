@@ -1,5 +1,5 @@
 import { supabaseRequest } from "./supabase";
-import type { ExtractedPdf, PaperDocumentInfo } from "./document-types";
+import type { ExtractedPdf, PaperDocumentInfo, PaperDocumentText } from "./document-types";
 import type { PaperInput } from "./validation";
 
 export type StoredDocument = PaperDocumentInfo & { storageKey: string; pagesJson: string };
@@ -8,6 +8,12 @@ const documentColumns = "id,paperId,filename,byteLength,pageCount,textCharacters
 export async function getDocumentInfo(paperId: string): Promise<PaperDocumentInfo | undefined> {
   const rows = await supabaseRequest<PaperDocumentInfo[]>("paper_documents", {
     query: { select: documentColumns, paperId: `eq.${paperId}`, limit: "1" },
+  });
+  return rows[0];
+}
+export async function getDocumentText(paperId: string): Promise<PaperDocumentText | undefined> {
+  const rows = await supabaseRequest<PaperDocumentText[]>("paper_documents", {
+    query: { select: "id,pagesJson", paperId: `eq.${paperId}`, limit: "1" },
   });
   return rows[0];
 }

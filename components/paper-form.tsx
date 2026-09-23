@@ -7,7 +7,7 @@ import { PDF_LIMITS, type PaperDocumentInfo } from "@/lib/document-types";
 import { SummaryDraft } from "./summary-draft";
 
 export function PaperForm({ paper, defaultPresenter, cloudStorage, document, summaryConfigured = false, onPendingChange }: { paper?: Paper; defaultPresenter: string; cloudStorage: boolean; document?: PaperDocumentInfo; summaryConfigured?: boolean; onPendingChange?: (pending: boolean) => void }) {
-  const { locale, text, values, setField, addReferenceLink, updateReferenceLink, removeReferenceLink, pending, error, notice, operation, submit, attachment, draft, upload, removeDocument, summarize, applyDraft } = usePaperForm(defaultPresenter, cloudStorage, paper, document, onPendingChange);
+  const { locale, text, values, setField, addReferenceLink, updateReferenceLink, removeReferenceLink, githubSearchComplete, githubCandidates, canAddGithubLink, findGithubLinks, addGithubLink, pending, error, notice, operation, submit, attachment, draft, upload, removeDocument, summarize, applyDraft } = usePaperForm(defaultPresenter, cloudStorage, paper, document, onPendingChange);
   return <form className="panel" onSubmit={submit}>
     {paper && <section className="document-panel">
       <h2>{text.documentHeading}</h2>
@@ -32,6 +32,17 @@ export function PaperForm({ paper, defaultPresenter, cloudStorage, document, sum
       <section className="reference-links-editor" aria-labelledby="reference-links-heading">
         <h2 id="reference-links-heading">{text.referenceLinks} <span className="muted">{text.optional}</span></h2>
         <p className="muted">{text.referenceLinksHelp}</p>
+        {paper && attachment && <div className="github-link-search">
+          <button type="button" className="button button-secondary button-small" onClick={findGithubLinks}>{text.findGithubLinks}</button>
+          <p className="muted">{text.githubLinksHelp}</p>
+          {githubSearchComplete && (githubCandidates.length === 0 ? <p className="muted" role="status">{text.githubLinksEmpty}</p> : <>
+            <p className="muted" role="status">{text.githubLinksFound(githubCandidates.length)}</p>
+            <ul className="github-link-candidates">{githubCandidates.map(candidate => <li key={candidate.url}>
+              <div><a className="blue" href={candidate.url} target="_blank" rel="noopener noreferrer">{candidate.label} ↗</a><p className="muted">{candidate.url}</p><p className="muted">{text.githubLinkPages(candidate.pages)}</p></div>
+              <button type="button" className="button button-secondary button-small" onClick={() => addGithubLink(candidate)} disabled={candidate.added || !canAddGithubLink} aria-label={text.addGithubLinkLabel(candidate.label)}>{candidate.added ? text.githubLinkAlreadyAdded : text.addGithubLink}</button>
+            </li>)}</ul>
+          </>)}
+        </div>}
         {values.referenceLinks.map((link, index) => <div className="reference-link-row" key={index}>
           <div className="form-grid">
             <label className="field">{text.referenceLinkName}<input name={`referenceLinks[${index}].label`} maxLength={REFERENCE_LINK_LIMITS.maxLabelLength} required={Boolean(link.url.trim())} value={link.label} onChange={event => updateReferenceLink(index, "label", event.target.value)} placeholder={text.referenceLinkPlaceholder} /></label>

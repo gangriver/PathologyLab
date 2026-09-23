@@ -20,6 +20,7 @@ export type PaperDocumentInfo = {
   textCharacters: number; uploadedAt: string;
 };
 export type PaperDocument = PaperDocumentInfo & { content: Uint8Array; pagesJson: string };
+export type PaperDocumentText = Pick<PaperDocument, "id" | "pagesJson">;
 export type SummarySection = { text: string; pages: number[] };
 export type PaperSummary = {
   documentId: string; filename: string; title: string; authors: string;

@@ -1,11 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { isCloudStorageEnabled } from "./cloud-config";
-import type { ExtractedPdf, PaperDocument, PaperDocumentInfo } from "./document-types";
+import type { ExtractedPdf, PaperDocument, PaperDocumentInfo, PaperDocumentText } from "./document-types";
 import type { StoredDocument } from "./cloud-documents";
 
 export async function getDocumentInfo(paperId: string): Promise<PaperDocumentInfo | undefined> {
   const repository = isCloudStorageEnabled() ? await import("./cloud-documents") : await import("./documents-local");
   return repository.getDocumentInfo(paperId);
+}
+export async function getDocumentText(paperId: string): Promise<PaperDocumentText | undefined> {
+  const repository = isCloudStorageEnabled() ? await import("./cloud-documents") : await import("./documents-local");
+  return repository.getDocumentText(paperId);
 }
 export async function getDocument(paperId: string): Promise<PaperDocument | undefined> {
   if (!isCloudStorageEnabled()) return (await import("./documents-local")).getDocument(paperId);

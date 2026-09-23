@@ -9,6 +9,7 @@ import { paperSections } from "@/lib/paper-sections";
 import { uploadPdf } from "@/lib/upload-pdf";
 import { useLocale } from "./use-locale";
 import { getFormMessages, type PaperFormNotice, type PaperFormOperation } from "@/lib/i18n-form";
+import { normalizeGithubRepositoryUrl, type GithubLinkCandidate, type GithubLinkSuggestions } from "@/lib/github-links";
 
 export function usePaperForm(defaultPresenter: string, cloudStorage: boolean, paper?: Paper, initialDocument?: PaperDocumentInfo, onPendingChange?: (pending: boolean) => void) {
   const router = useRouter();
@@ -30,6 +31,11 @@ export function usePaperForm(defaultPresenter: string, cloudStorage: boolean, pa
   const [draft, setDraft] = useState<PaperSummary | null>(null);
   const [notice, setNotice] = useState<PaperFormNotice | null>(null);
   const [operation, setOperation] = useState<PaperFormOperation | null>(null);
+  const [githubSuggestions, setGithubSuggestions] = useState<GithubLinkSuggestions | null>(null);
+  const githubSearchComplete = githubSuggestions !== null && githubSuggestions.documentId === attachment?.id;
+  const existingGithubUrls = new Set(values.referenceLinks.map(link => normalizeGithubRepositoryUrl(link.url)?.toLowerCase()).filter(Boolean));
+  const githubCandidates = githubSearchComplete ? githubSuggestions.candidates.map(candidate => ({ ...candidate, added: existingGithubUrls.has(candidate.url.toLowerCase()) })) : [];
+  const canAddGithubLink = values.referenceLinks.length < REFERENCE_LINK_LIMITS.maxCount || values.referenceLinks.some(link => !link.label.trim() && !link.url.trim());
   function setField<K extends keyof PaperInput>(key: K, value: PaperInput[K]) { setValues(current => ({ ...current, [key]: value })); }
   function addReferenceLink() {
     setValues(current => current.referenceLinks.length >= REFERENCE_LINK_LIMITS.maxCount ? current : { ...current, referenceLinks: [...current.referenceLinks, { label: "", url: "" }] });
@@ -39,6 +45,23 @@ export function usePaperForm(defaultPresenter: string, cloudStorage: boolean, pa
   }
   function removeReferenceLink(index: number) {
     setValues(current => ({ ...current, referenceLinks: current.referenceLinks.filter((_, position) => position !== index) }));
+  }
+  async function findGithubLinks() {
+    if (!paper || !attachment) return;
+    setOperation("findingGithubLinks"); setNotice(null); setGithubSuggestions(null);
+    const result = await sendRequest<GithubLinkSuggestions>(() => fetch(`/api/papers/${paper.id}/github-links?documentId=${encodeURIComponent(attachment.id)}`, { cache: "no-store", signal: AbortSignal.timeout(15000) }));
+    if (result?.documentId === attachment.id) setGithubSuggestions(result);
+  }
+  function addGithubLink(candidate: GithubLinkCandidate) {
+    if (!githubSearchComplete || !canAddGithubLink || existingGithubUrls.has(candidate.url.toLowerCase())) return;
+    setValues(current => {
+      if (current.referenceLinks.some(link => normalizeGithubRepositoryUrl(link.url)?.toLowerCase() === candidate.url.toLowerCase())) return current;
+      const emptyIndex = current.referenceLinks.findIndex(link => !link.label.trim() && !link.url.trim());
+      const link = { label: candidate.label, url: candidate.url };
+      if (emptyIndex >= 0) return { ...current, referenceLinks: current.referenceLinks.map((existing, index) => index === emptyIndex ? link : existing) };
+      return current.referenceLinks.length >= REFERENCE_LINK_LIMITS.maxCount ? current : { ...current, referenceLinks: [...current.referenceLinks, link] };
+    });
+    setNotice("githubLinkAdded");
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,7 +77,7 @@ export function usePaperForm(defaultPresenter: string, cloudStorage: boolean, pa
     const form = new FormData(); form.set("file", file); form.set("revision", String(revision));
     const result = await sendRequest<{ document: PaperDocumentInfo; revision: number; basicInfo: PaperBasicInfo }>(() => uploadPdf("/api/papers/" + paper.id + "/pdf", form, cloudStorage));
     if (result) {
-      setAttachment(result.document); setRevision(result.revision); setDraft(null);
+      setAttachment(result.document); setRevision(result.revision); setDraft(null); setGithubSuggestions(null);
       setValues(current => ({
         ...current,
         title: current.title.trim() ? current.title : result.basicInfo.title,
@@ -68,7 +91,7 @@ export function usePaperForm(defaultPresenter: string, cloudStorage: boolean, pa
     if (!paper || !window.confirm(text.deletePdfConfirm)) return;
     setOperation("deletingPdf"); setNotice(null);
     const result = await send<{ revision: number }>("/api/papers/" + paper.id + "/pdf", "DELETE", { revision });
-    if (result) { setAttachment(undefined); setRevision(result.revision); setDraft(null); setNotice("pdfDeleted"); }
+    if (result) { setAttachment(undefined); setRevision(result.revision); setDraft(null); setGithubSuggestions(null); setNotice("pdfDeleted"); }
   }
   async function summarize() {
     if (!paper || !attachment) return;
@@ -88,5 +111,5 @@ export function usePaperForm(defaultPresenter: string, cloudStorage: boolean, pa
     });
     setDraft(null); setNotice("draftApplied");
   }
-  return { locale, text, values, setField, addReferenceLink, updateReferenceLink, removeReferenceLink, pending, error, notice: notice ? text.notices[notice] : "", operation: operation ? text.operations[operation] : "", submit, attachment, draft, upload, removeDocument, summarize, applyDraft };
+  return { locale, text, values, setField, addReferenceLink, updateReferenceLink, removeReferenceLink, githubSearchComplete, githubCandidates, canAddGithubLink, findGithubLinks, addGithubLink, pending, error, notice: notice ? text.notices[notice] : "", operation: operation ? text.operations[operation] : "", submit, attachment, draft, upload, removeDocument, summarize, applyDraft };
 }
