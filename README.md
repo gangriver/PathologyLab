@@ -1,4 +1,4 @@
-# PathologyLab
+# Spatial-Omics Lab
 
 **함께 연구하고, 함께 기록하는 공간.**
 

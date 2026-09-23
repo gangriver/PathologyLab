@@ -1,7 +1,7 @@
 import type { Locale } from "@/lib/i18n";
 
 export const lab = {
-  name: "우리 연구실",
+  name: "Spatial-Omics Lab",
   disciplines: "인공지능 · 의생명과학 · 병리학",
   members: [
     { name: "노명균", initials: "노", role: "교수", department: "병리학", description: "병리학 분야의 연구와 교육을 담당합니다.", type: "faculty" },
@@ -20,7 +20,6 @@ export function getLab(locale: Locale) {
   if (locale === "ko") return lab;
   return {
     ...lab,
-    name: "Our Lab",
     disciplines: "Artificial Intelligence · Biomedical Sciences · Pathology",
     members: lab.members.map((member) => ({ ...member, ...englishMembers[member.type] })),
   };
