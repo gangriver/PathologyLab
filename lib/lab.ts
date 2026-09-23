@@ -11,7 +11,7 @@ export const lab = {
 } as const;
 
 const englishMembers = {
-  faculty: { name: "Noh myung Giun", initials: "N", role: "Professor", department: "Pathology", description: "Conducting research and teaching in pathology." },
+  faculty: { name: "Noh Myung Giun", initials: "N", role: "Professor", department: "Pathology", description: "Conducting research and teaching in pathology." },
   doctoral: { role: "PhD Student", department: "Biomedical Sciences", description: "Pursuing a PhD in the Department of Biomedical Sciences." },
   masters: { name: "Yi Hae Chan", initials: "Y", role: "Master’s Student", department: "Artificial Intelligence", description: "Pursuing a master’s degree in the Department of Artificial Intelligence." },
 } as const;
