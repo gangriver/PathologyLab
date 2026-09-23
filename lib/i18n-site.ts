@@ -9,8 +9,8 @@ const siteCopy = {
       archiveEyebrow: "Lab Meeting",
     },
     home: {
-      heading: ["Spatial-Omics Lab을", "함께 만드는 사람들"],
-      introduction: ["각자의 분야에서 깊이 있게.", "함께하는 자리에서 더 넓게.", "Spatial-Omics Lab Members"],
+      heading: ["Spatial-Omics Lab"],
+      introduction: ["Digital Pathology", "Spatial-Omics", "Artifical Intelligence"],
       members: "Members",
       memberCount: (count: number) => `함께하는 ${count}명`,
       facultyTitle: "PI",
