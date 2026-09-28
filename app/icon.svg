@@ -1,1 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#132648"/><path d="M18 19h28v13H24v9h22v6H18V26h22v-1H18z" fill="#fff"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254" role="img" aria-labelledby="title desc">
+  <title id="title">Spatial-Omics Lab</title>
+  <desc id="desc">A spatial tissue mosaic with square nuclei connected to a simplified neural network.</desc>
+  <rect width="1254" height="1254" fill="#132648"/>
+  <g fill="none" stroke="#fff" stroke-width="20">
+    <path d="M460 370 730 462M460 415 730 762M448 568 730 462M434 651 730 762M433 793 730 462M431 841 730 762M730 462 1047 624M730 762 1047 624"/>
+  </g>
+  <g fill="#fff">
+    <path d="M364 285 468 326 474 420 407 479 334 467 287 369Z"/>
+    <path d="M165 369 273 375 319 469 255 571 190 560 126 482Z"/>
+    <path d="M330 482 405 495 458 561 444 647 318 681 269 579Z"/>
+    <path d="M188 575 257 586 306 690 233 780 149 750 126 622Z"/>
+    <path d="M323 699 406 675 447 782 436 848 359 909 282 877 244 791Z"/>
+  </g>
+  <g fill="#00d9ed">
+    <path d="M363 352h54v54h-54ZM198 435h55v55h-55ZM345 556h54v54h-54ZM181 643h55v55h-55ZM323 757h55v55h-55Z"/>
+    <path d="M668 399h125v128H668ZM668 697h125v129H668ZM972 551h151v147H972Z"/>
+  </g>
+</svg>
