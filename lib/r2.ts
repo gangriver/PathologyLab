@@ -2,8 +2,26 @@ import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client, S3Se
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { ApiError } from "./api";
 import { PDF_LIMITS } from "./document-types";
+import { MAX_IMAGE_BYTES } from "./lab-content-types";
 
 export const R2_URL_LIFETIME_SECONDS = 600;
+
+export async function putLabImage(storageKey: string, content: Uint8Array, contentType: string) {
+  if (!/^gallery\/[a-f0-9-]{36}$/.test(storageKey) || !["image/jpeg", "image/png", "image/webp"].includes(contentType)) throw new ApiError(422, "image_type");
+  if (!content.byteLength || content.byteLength > MAX_IMAGE_BYTES) throw new ApiError(413, "image_size");
+  const { client, bucket } = createStorage();
+  try {
+    await client.send(new PutObjectCommand({ Bucket: bucket, Key: storageKey, Body: content, ContentType: contentType, ContentLength: content.byteLength, IfNoneMatch: "*" }), { abortSignal: AbortSignal.timeout(30000) });
+  } catch { throw new ApiError(502, "image_upload_failed"); }
+  finally { client.destroy(); }
+}
+
+export async function getLabImageUrl(storageKey: string, contentType: string) {
+  if (!/^gallery\/[a-f0-9-]{36}$/.test(storageKey) || !["image/jpeg", "image/png", "image/webp"].includes(contentType)) throw new ApiError(404, "image_not_found");
+  const { client, bucket } = createStorage();
+  try { return await getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: storageKey, ResponseContentType: contentType, ResponseContentDisposition: "inline" }), { expiresIn: R2_URL_LIFETIME_SECONDS }); }
+  finally { client.destroy(); }
+}
 
 function createStorage() {
   const accountId = process.env.R2_ACCOUNT_ID?.trim();
