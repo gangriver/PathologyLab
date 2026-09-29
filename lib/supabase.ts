@@ -1,6 +1,6 @@
 import { ApiError } from "./api";
 
-type Resource = "papers" | "comments" | "paper_documents" | "storage_cleanup"
+type Resource = "papers" | "comments" | "paper_documents" | "storage_cleanup" | "lab_entries" | "rpc/lab_update_entry" | "rpc/lab_delete_entry"
   | "rpc/lab_edit_paper" | "rpc/lab_remove_paper" | "rpc/lab_import_paper"
   | "rpc/lab_replace_document" | "rpc/lab_delete_document";
 type RequestOptions = {

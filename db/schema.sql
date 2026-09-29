@@ -1,3 +1,16 @@
+CREATE TABLE IF NOT EXISTS lab_entries (
+  id TEXT PRIMARY KEY,
+  collection TEXT NOT NULL CHECK(collection IN ('publications','projects','gallery')),
+  data TEXT NOT NULL CHECK(json_valid(data) AND json_type(data) = 'object'),
+  createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL,
+  revision INTEGER NOT NULL DEFAULT 1 CHECK(revision > 0),
+  imageKey TEXT NOT NULL DEFAULT '', imageType TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS lab_entries_collection_idx ON lab_entries(collection,createdAt);
+CREATE TABLE IF NOT EXISTS lab_images (
+  entryId TEXT PRIMARY KEY REFERENCES lab_entries(id) ON DELETE CASCADE,
+  content BLOB NOT NULL
+);
 CREATE TABLE IF NOT EXISTS papers (
   id TEXT PRIMARY KEY, title TEXT NOT NULL, subtitle TEXT NOT NULL DEFAULT '', authors TEXT NOT NULL DEFAULT '', url TEXT NOT NULL DEFAULT '',
   referenceLinks TEXT NOT NULL DEFAULT '[]' CHECK(json_valid(referenceLinks) AND json_type(referenceLinks) = 'array'),

@@ -12,9 +12,9 @@ export async function flushStorageCleanup() {
       query: { select: "storageKey", createdAt: `lt.${new Date(Date.now() - 60 * 60 * 1000).toISOString()}`, order: "createdAt.asc", limit: "1" },
     });
     for (const { storageKey } of entries) {
-      const documents = await supabaseRequest<{ id: string }[]>("paper_documents", {
-        query: { select: "id", storageKey: `eq.${storageKey}`, limit: "1" },
-      });
+      const documents = storageKey.startsWith("gallery/")
+        ? await supabaseRequest<{ id: string }[]>("lab_entries", { query: { select: "id", imageKey: `eq.${storageKey}`, limit: "1" } })
+        : await supabaseRequest<{ id: string }[]>("paper_documents", { query: { select: "id", storageKey: `eq.${storageKey}`, limit: "1" } });
       if (!documents.length) await deletePdf(storageKey);
       await supabaseRequest("storage_cleanup", { method: "DELETE", query: { storageKey: `eq.${storageKey}` }, prefer: "return=minimal" });
     }

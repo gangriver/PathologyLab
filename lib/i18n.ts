@@ -15,10 +15,12 @@ export const shellCopy = {
     description: "인공지능, 의생명과학, 병리학을 함께 공부하는 연구실의 멤버 소개와 누구나 함께 기록하는 논문 아카이브입니다.",
     skip: "본문으로 이동", home: "홈", tagline: "연구와 기록의 공간", navigation: "주 메뉴",
     members: "멤버 소개", papers: "논문 아카이브", register: "논문 등록", language: "화면 언어",
+    publications: "Publications", projects: "Research Projects", gallery: "Gallery",
   },
   en: {
     description: "Meet our researchers in artificial intelligence, biomedical science, and pathology, and explore our shared archive of papers and lab discussions.",
     skip: "Skip to content", home: "home", tagline: "A space for research and ideas", navigation: "Main navigation",
     members: "Members", papers: "Paper archive", register: "Add paper", language: "Display language",
+    publications: "Publications", projects: "Research Projects", gallery: "Gallery",
   },
 } as const;
