@@ -15,8 +15,8 @@ These sections follow the existing site's open editing model: visitors can add, 
 ## Deployment
 
 - Local SQLite: run `npm run setup` once to add the new tables. Existing tables and records remain intact.
-- Existing Supabase installation: run `db/migrations/20260923_add_lab_content.sql` in its SQL editor **before deploying the code**. This adds a table and two server-only RPC functions; it does not modify existing paper data.
-- New Supabase installation: `db/supabase.sql` includes this migration.
+- Supabase 운영 DB에는 이 기능의 SQL이 적용되어 있습니다. 새 DB 변경은 `supabase/migrations/`에 추가하고 [공통 배포 절차](deployment.md)를 따릅니다. 예전 `db/migrations/` SQL을 다시 실행하지 마세요.
+- 새 Supabase 환경의 스키마는 `supabase/migrations/`의 기준 파일부터 순서대로 구성합니다.
 - Gallery images use the existing R2 account and bucket when `CLOUD_STORAGE=1`, under `gallery/`. Local installations store images in SQLite.
 - Keep `APP_URL` set to the site's actual origin, as for the existing paper forms.
 

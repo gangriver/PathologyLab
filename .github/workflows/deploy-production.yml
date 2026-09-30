@@ -1,0 +1,115 @@
+name: 운영 배포
+
+on:
+  push:
+    branches:
+      - codex/initial-homepage
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-cloud
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/codex/initial-homepage'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      SUPABASE_PROJECT_REF: xmsyxbqajlwekgmjyall
+      VERCEL_PROJECT_ID: prj_wAGW1fL7hmEBI3jhd4jfAeWp5ZsU
+      VERCEL_ORG_ID: team_T9ygNwk03w2bBwkZ6SANhi0j
+    steps:
+      - name: 저장소 가져오기
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Node.js 준비
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: 코드 검사
+        run: npm run lint
+
+      - name: 테스트
+        run: npm test
+
+      - name: 배포 CLI 준비
+        run: |
+          npm install --prefix "$RUNNER_TEMP/deploy-cli" --no-save --package-lock=false supabase@2.118.0 vercel@61.0.0
+          echo "$RUNNER_TEMP/deploy-cli/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: 운영 환경 가져오기
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          : "${VERCEL_TOKEN:?VERCEL_TOKEN Secret이 비어 있습니다.}"
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: 운영 빌드
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: 타입 검사
+        run: npm run typecheck
+
+      - name: 빌드 결과 HTTP 검증
+        run: npm run test:http
+
+      - name: 운영 DB 마이그레이션
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          : "${SUPABASE_ACCESS_TOKEN:?SUPABASE_ACCESS_TOKEN Secret이 비어 있습니다.}"
+          : "${SUPABASE_DB_PASSWORD:?SUPABASE_DB_PASSWORD Secret이 비어 있습니다.}"
+          supabase link --project-ref "$SUPABASE_PROJECT_REF" --yes
+          supabase db push --linked --yes
+
+      - name: 검증한 빌드 배포
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN"
+
+      - name: 운영 사이트 읽기 확인
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { parseEnv } from 'node:util';
+
+          try {
+            const env = parseEnv(readFileSync('.vercel/.env.production.local', 'utf8'));
+            const origin = new URL(env.APP_URL);
+            if (origin.protocol !== 'https:' || origin.username || origin.password) {
+              throw new Error('운영 APP_URL 설정 오류');
+            }
+            for (const path of ['/', '/api/papers']) {
+              const response = await fetch(new URL(path, origin), {
+                method: 'GET',
+                redirect: 'error',
+                signal: AbortSignal.timeout(30000),
+              });
+              if (response.status !== 200) throw new Error('운영 응답 상태 오류');
+              if (path === '/api/papers' && !Array.isArray(await response.json())) {
+                throw new Error('운영 논문 목록 응답 오류');
+              }
+            }
+            console.log('운영 홈페이지와 논문 목록의 읽기 확인을 통과했습니다.');
+          } catch {
+            console.error('운영 사이트 읽기 확인에 실패했습니다. APP_URL과 운영 배포 상태를 확인해주세요.');
+            process.exitCode = 1;
+          }
+          NODE
