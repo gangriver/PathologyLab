@@ -1,0 +1,7 @@
+project_id = "pathology-lab"
+
+[db]
+major_version = 17
+
+[db.seed]
+enabled = false
