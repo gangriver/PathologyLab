@@ -54,10 +54,10 @@ async function main() {
     assert.doesNotMatch(homeHtml, /href="\/(login|signup)"|멤버 로그인/);
     const englishHome = await (await get("/", "en")).text();
     assert.match(englishHome, /<html lang="en"/);
-    assert.match(englishHome, /Noh myung Giun/);
+    assert.match(englishHome, /Noh Myung-Giun/);
     assert.match(englishHome, /Yi Hae Chan/);
     for (const locale of ["ko", "invalid"]) assert.match(await (await get("/", locale)).text(), /<html lang="ko"/);
-    const notFound = await get("/missing-language-check", "en");
+    const notFound = await get("/missing-language-check/unmatched", "en");
     assert.equal(notFound.status, 404);
     assert.match(await notFound.text(), /<html lang="en"/);
     const invalidOrigin = await fetch(base + "/api/papers", {

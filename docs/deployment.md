@@ -37,4 +37,6 @@ GitHub 저장소의 Actions Secrets에서 다음 세 항목을 관리합니다.
 
 Supabase 토큰은 해당 프로젝트에 대해 `Project Settings`, `API Keys`, `API Key Secrets`, `Connection Pooling`의 **Read** 권한이 필요합니다. DB SQL은 별도의 DB 비밀번호로 실행합니다. 토큰 만료·폐기 또는 비밀번호 변경 시 해당 Secret을 갱신해야 합니다.
 
+Vercel 토큰은 [Account Tokens](https://vercel.com/account/tokens)에서 **Scope → haechanyis-projects → All Projects**를 선택해 생성합니다. 배포 CLI가 팀 정보도 조회하므로 팀 범위 토큰이 필요합니다. 생성한 값은 `VERCEL_TOKEN`에 저장합니다.
+
 앱에서 사용하는 Supabase 서버 키와 R2 설정 등은 기존 Vercel 환경변수를 사용합니다. 비밀값이나 내려받은 운영 환경 파일을 저장소에 올리지 마세요.
