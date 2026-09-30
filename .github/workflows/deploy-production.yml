@@ -56,12 +56,27 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           : "${VERCEL_TOKEN:?VERCEL_TOKEN Secret이 비어 있습니다.}"
-          vercel pull --yes --environment=production --scope="$VERCEL_ORG_ID" --token="$VERCEL_TOKEN"
+          node --input-type=module <<'NODE'
+          const paths = [
+            ['계정', '/v2/user'],
+            ['팀', `/teams/${process.env.VERCEL_ORG_ID}?teamId=${process.env.VERCEL_ORG_ID}`],
+            ['프로젝트', `/v9/projects/${process.env.VERCEL_PROJECT_ID}?teamId=${process.env.VERCEL_ORG_ID}`],
+          ];
+          for (const [label, path] of paths) {
+            const response = await fetch(new URL(path, 'https://api.vercel.com'), {
+              headers: { Authorization: `Bearer ${process.env.VERCEL_TOKEN}` },
+              redirect: 'error',
+              signal: AbortSignal.timeout(30000),
+            });
+            console.log(`Vercel ${label} 조회: HTTP ${response.status}`);
+          }
+          NODE
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: 운영 빌드
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vercel build --prod --scope="$VERCEL_ORG_ID" --token="$VERCEL_TOKEN"
+        run: vercel build --prod --token="$VERCEL_TOKEN"
 
       - name: 타입 검사
         run: npm run typecheck
@@ -82,7 +97,7 @@ jobs:
       - name: 검증한 빌드 배포
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vercel deploy --prebuilt --prod --yes --scope="$VERCEL_ORG_ID" --token="$VERCEL_TOKEN"
+        run: vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN"
 
       - name: 운영 사이트 읽기 확인
         run: |
